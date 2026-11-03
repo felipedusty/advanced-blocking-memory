@@ -22,15 +22,15 @@ No container memory limit anywhere. Ratios are original over candidate (higher i
 with an original measured on the same machine. Memory is cgroup `anon` after the last list is parsed, the reload
 peak is cgroup `memory.peak` after the lists are touched on disk, p50 is the candidate against its own original.
 
-**GitHub Actions, amd64 and arm64**, median of three runs ([41611257103](results/ci-compare/run-41611257103.md),
-[41679672111](results/ci-compare/run-41679672111.md), [41679820344](results/ci-compare/run-41679820344.md)); the
-ratio varies by at most 0.13x between them:
+**GitHub Actions, amd64 and arm64**, median of three runs ([41709726607](results/ci-compare/run-41709726607.md),
+[41709739400](results/ci-compare/run-41709739400.md), [41709752245](results/ci-compare/run-41709752245.md)); the
+ratio varies by at most 0.23x between them (one amd64 `exact-tags` leg held 102 MiB, the other two 93-94):
 
 | patch | anon (MiB) amd64 / arm64 | ratio | reload peak ratio | p50 | qps |
 |---|---|---|---|---|---|
-| `hash64-set` | 86.9 / 136.6 (original 256.6 / 303.6) | 2.95x / 2.22x | 2.31x / 2.09x | -0.1% / 0.0% | +0.3% / +1.0% |
-| `hash64-index2` | 55.9 / 105.4 (256.8 / 302.6) | 4.59x / 2.87x | 3.26x / 2.76x | +0.4% / -2.1% | -0.5% / +2.3% |
-| `exact-tags` | 93.2 / 143.2 (256.7 / 302.6) | 2.75x / 2.12x | 2.17x / 2.01x | +2.6% / +4.7% | -2.5% / -3.5% |
+| `hash64-set` | 86.8 / 136.5 (original 257.0 / 302.7) | 2.96x / 2.22x | 2.27x / 2.10x | -0.3% / +0.3% | +0.6% / -0.8% |
+| `hash64-index2` | 55.7 / 105.3 (256.9 / 302.6) | 4.61x / 2.87x | 3.19x / 2.76x | +1.3% / -1.0% | -2.4% / +1.9% |
+| `exact-tags` | 94.3 / 142.8 (256.6 / 302.5) | 2.72x / 2.12x | 2.18x / 2.00x | +2.2% / -1.1% | -1.5% / +1.5% |
 
 **Local, one session, amd64** (`results/session-amd64-12`; original 272.5 MiB, reload peak 535.4):
 
@@ -57,16 +57,17 @@ its reload peaks differ from this one by up to 40%, so read them as a range.
 Latency differences of a few percent are inside the noise of this harness: in the local session the original's own p50
 was 260.0 µs in the rounds paired with `hash64-index2` and 238-243 µs in the others, which is where its -7.2% comes
 from. Lookup cost in isolation (`lab/lookup-bench`, `results/lookup-bench`, CI amd64 / arm64): a hit / miss costs
-50 / 31 ns and 160 / 136 ns in a `HashSet<ulong>`, 197 / 67 ns and 407 / 169 ns in the original `HashSet<string>`, and
-142 / 143 ns and 305 / 310 ns in a binary search over the sorted 16 MiB array, which is why the sorted list needs the
-prefix index (21 / 26 ns and 57 / 56 ns).
+63 / 53 ns and 148 / 127 ns in a `HashSet<ulong>`, 253 / 122 ns and 412 / 162 ns in the original `HashSet<string>`, and
+189 / 197 ns and 277 / 277 ns in a binary search over the sorted 16 MiB array, which is why the sorted list needs the
+prefix index (42-45 / 46 ns and 52-71 / 59-89 ns; the benchmark measures it in two passes that differ by up to 1.5x on arm64).
 
 ## Same answers
 
 On every CI leg the original and the candidate return the same response for: an A and a TXT query for each of the
-2,159,642 listed domains, the 192 domains covered by the allow lists, 500 sampled reports, 12 edge cases (hosts and
-ad-block formats, `@@` exceptions, regex, a list of 17,576 four-character names that makes the capacity guess short)
-and 240,716 near-miss names (typos, other top-level domains, parents, upper case). The digests are equal and the
+2,099,597 listed domains, the 197 domains covered by the allow lists, 500 sampled reports, 21 edge-case names (12 of
+them blocked; hosts and ad-block formats, `@@` exceptions, regex, a list of 17,576 four-character names that makes
+the capacity guess short) and 240,731 near-miss names (typos, other top-level domains, parents, upper case). The
+digests are equal and the
 differences are 0. The same battery runs locally with `lab/correctness.sh` on 2,292,180 names, plus a hosts-format
 differential on 601,786 (`results/correctness-amd64`), and each structure has a reflection unit check
 (`results/unit-checks`).
@@ -116,11 +117,11 @@ lab/session-bench.sh end && python3 lab/session-table.py results/session-local
 
 ## Limits
 
-- Without a container limit the memory the .NET GC leaves behind depends on the machine. In a run of 25 candidates 5
-  of the 24 amd64 legs that completed had an original holding 283-289 MiB instead of 253-257, and the candidates held
-  tens of MiB more there (`hash96-presize` 129 MiB against 64 for the equivalent `hash96-list` and `hash96-split` on
-  other legs); none of the 9 amd64 finalist legs did. Ratios are paired per leg but differ with that (`docs/attempts.md`
-  2.4); the cause (a different runner type) is inferred, not isolated.
+- Without a container limit the memory the .NET GC leaves behind depends on the machine. In the run of 25 candidates 5
+  of the 25 amd64 legs had an original holding 268-289 MiB instead of 254-259, and the candidates held more there
+  too (`hash64-gc` 165 MiB on its leg against 110 for `hash64`, which differs by four GC lines); none of the 9 amd64
+  finalist legs had such an original. Ratios are paired per leg but differ with that (`docs/attempts.md` 2.4); the
+  cause (a different runner type) is inferred, not isolated.
 - The board figures are one session each for latency; its reload peak varied by up to 40% between two sessions.
 - `BlockListZoneManager` (the built-in lists) and the regex lists are not touched.
 - The old and the new list coexist during a reload: the peak falls by 2x to 3.6x, the 2x remains in kind.
