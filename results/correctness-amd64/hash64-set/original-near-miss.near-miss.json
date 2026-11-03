@@ -1,0 +1,82 @@
+{
+  "variant": "original",
+  "run_tag": "-near-miss",
+  "seeds": 30000,
+  "names": 240574,
+  "answers": 240574,
+  "errors": 0,
+  "blocked": 58883,
+  "forwarded": 181691,
+  "other": 0,
+  "retried": 0,
+  "retried_first_flags": {},
+  "model_mismatches": 0,
+  "digest": "79962225265bc64e",
+  "per_kind": {
+    "prefix": {
+      "names": 29988,
+      "blocked": 7170,
+      "forwarded": 22818,
+      "other": 0,
+      "error": 0
+    },
+    "label-suffix": {
+      "names": 29983,
+      "blocked": 7167,
+      "forwarded": 22816,
+      "other": 0,
+      "error": 0
+    },
+    "drop-first": {
+      "names": 29796,
+      "blocked": 7138,
+      "forwarded": 22658,
+      "other": 0,
+      "error": 0
+    },
+    "truncate": {
+      "names": 29987,
+      "blocked": 250,
+      "forwarded": 29737,
+      "other": 0,
+      "error": 0
+    },
+    "append": {
+      "names": 29993,
+      "blocked": 0,
+      "forwarded": 29993,
+      "other": 0,
+      "error": 0
+    },
+    "parent": {
+      "names": 1418,
+      "blocked": 164,
+      "forwarded": 1254,
+      "other": 0,
+      "error": 0
+    },
+    "tld-change": {
+      "names": 29990,
+      "blocked": 7,
+      "forwarded": 29983,
+      "other": 0,
+      "error": 0
+    },
+    "swap": {
+      "names": 29426,
+      "blocked": 6994,
+      "forwarded": 22432,
+      "other": 0,
+      "error": 0
+    },
+    "upper": {
+      "names": 29993,
+      "blocked": 29993,
+      "forwarded": 0,
+      "other": 0,
+      "error": 0
+    }
+  },
+  "workers": 8,
+  "elapsed_s": 173.415
+}

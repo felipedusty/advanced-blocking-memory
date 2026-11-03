@@ -1,0 +1,21 @@
+edge-hosts.example.com	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/block-hosts.txt; domain=edge-hosts.example.com" 
+edge-hosts2.example.com	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/block-hosts.txt; domain=edge-hosts2.example.com" 
+edge-adblock.example.com	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/adblock.txt; domain=edge-adblock.example.com" 
+edge-all.example.com	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/adblock.txt; domain=edge-all.example.com" 
+edge-third.example.com	
+edge-adblock-allowed.example.com	
+edge-allowed.example.com	
+edge-both.example.com	
+edge-regex.example.com	"source=advanced-blocking-app; group=edge; regexBlockListUrl=file:///etc/dns/edge/regex.txt; regex=^edge-regex\\." 
+edge-unknown.example.com	
+edge-static.example.com	"source=advanced-blocking-app; group=edge; domain=edge-static.example.com" 
+edge-static-allowed.example.com	
+sub.edge-hosts.example.com	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/block-hosts.txt; domain=edge-hosts.example.com" 
+edge-upper-hosts.example.com	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/block-hosts.txt; domain=edge-upper-hosts.example.com" 
+edge-upper-adblock.example.com	
+a.bc	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/dense-short.txt; domain=a.bc" 
+m.nz	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/dense-short.txt; domain=m.nz" 
+z.zz	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/dense-short.txt; domain=z.zz" 
+sub.m.nz	"source=advanced-blocking-app; group=edge; blockListUrl=file:///etc/dns/edge/dense-short.txt; domain=m.nz" 
+0.zz	
+a.bcd	

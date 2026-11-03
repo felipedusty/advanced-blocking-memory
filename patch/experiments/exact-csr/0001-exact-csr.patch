@@ -1,0 +1,282 @@
+--- a/Apps/AdvancedBlockingApp/App.cs
++++ b/Apps/AdvancedBlockingApp/App.cs
+@@ -168,6 +168,24 @@
+             return false;
+         }
+ 
++        private static bool IsZoneFound(DomainSet domains, string domain, out string? foundZone)
++        {
++            do
++            {
++                if (domains.Contains(domain))
++                {
++                    foundZone = domain;
++                    return true;
++                }
++
++                domain = GetParentZone(domain)!;
++            }
++            while (domain is not null);
++
++            foundZone = null;
++            return false;
++        }
++
+         private static bool IsZoneFound(Dictionary<Uri, BlockList> listZones, string domain, out string? foundZone, out Uri? listUri)
+         {
+             foreach (KeyValuePair<Uri, BlockList> listZone in listZones)
+@@ -1134,6 +1152,113 @@
+             #endregion
+         }
+ 
++        //exact set of domain names that does not keep one string object per name. The names (ASCII: the parsers only
++        //accept valid domain names) are stored in one array as a length byte followed by the name, grouped by hash
++        //bucket, with the start of every bucket in a second array, so Contains() scans about 4 short names.
++        //Add() is only for building; call Seal() before Contains().
++        sealed class DomainSet
++        {
++            #region variables
++
++            byte[] _names = new byte[1024];
++            int[] _bucketStarts = [0, 0];
++            int _length;
++            int _count;
++
++            #endregion
++
++            #region private
++
++            private static int GetBucket(ReadOnlySpan<byte> name, int buckets)
++            {
++                HashCode hash = new HashCode();
++                hash.AddBytes(name);
++
++                return (int)(((ulong)(uint)hash.ToHashCode() * (uint)buckets) >> 32);
++            }
++
++            #endregion
++
++            #region public
++
++            public void EnsureCapacity(int capacity)
++            {
++                if (capacity > _names.Length)
++                    Array.Resize(ref _names, capacity);
++            }
++
++            public void Add(string domain)
++            {
++                if (_length + domain.Length + 1 > _names.Length)
++                    Array.Resize(ref _names, Math.Max(_names.Length * 2, _length + domain.Length + 1));
++
++                _names[_length] = (byte)domain.Length;
++                Encoding.ASCII.GetBytes(domain, _names.AsSpan(_length + 1));
++                _length += domain.Length + 1;
++                _count++;
++            }
++
++            public void Seal()
++            {
++                int buckets = Math.Max(1, _count / 4);
++                int[] starts = new int[buckets + 1];
++                _bucketStarts = starts;
++
++                //count the bytes of every bucket, then turn the counts into bucket ends
++                for (int i = 0; i < _length; i += _names[i] + 1)
++                    starts[GetBucket(_names.AsSpan(i + 1, _names[i]), buckets)] += _names[i] + 1;
++
++                for (int b = 1; b < buckets; b++)
++                    starts[b] += starts[b - 1];
++
++                starts[buckets] = starts[buckets - 1];
++
++                //fill every bucket from its end, which turns the ends into bucket starts
++                byte[] names = new byte[_length];
++
++                for (int i = 0; i < _length; i += _names[i] + 1)
++                {
++                    int size = _names[i] + 1;
++                    int bucket = GetBucket(_names.AsSpan(i + 1, _names[i]), buckets);
++
++                    starts[bucket] -= size;
++                    Buffer.BlockCopy(_names, i, names, starts[bucket], size);
++                }
++
++                _names = names;
++            }
++
++            public bool Contains(string domain)
++            {
++                if (domain.Length > 255)
++                    return false; //invalid domain name
++
++                //a character outside ASCII becomes '?', which is not in any stored name
++                Span<byte> name = stackalloc byte[255];
++                name = name.Slice(0, Encoding.ASCII.GetBytes(domain, name));
++
++                int bucket = GetBucket(name, _bucketStarts.Length - 1);
++                int end = _bucketStarts[bucket + 1];
++
++                for (int i = _bucketStarts[bucket]; i < end; i += _names[i] + 1)
++                {
++                    if ((_names[i] == name.Length) && name.SequenceEqual(_names.AsSpan(i + 1, name.Length)))
++                        return true;
++                }
++
++                return false;
++            }
++
++            #endregion
++
++            #region properties
++
++            public int Count
++            { get { return _count; } }
++
++            #endregion
++        }
++
+         abstract class ListBase
+         {
+             #region variables
+@@ -1334,7 +1459,7 @@
+ 
+             readonly static char[] _popWordSeperator = new char[] { ' ', '\t' };
+ 
+-            HashSet<string> _listZone = [];
++            DomainSet _listZone = new DomainSet();
+ 
+             #endregion
+ 
+@@ -1372,9 +1497,9 @@
+                 return word;
+             }
+ 
+-            private Queue<string> ReadListFile()
++            private DomainSet ReadListFile()
+             {
+-                Queue<string> domains = new Queue<string>();
++                DomainSet domains = new DomainSet();
+ 
+                 try
+                 {
+@@ -1382,6 +1507,8 @@
+ 
+                     using (FileStream fS = new FileStream(_listFilePath, FileMode.Open, FileAccess.Read))
+                     {
++                        domains.EnsureCapacity((int)Math.Min(fS.Length, Array.MaxLength)); //the names take less space than the file
++
+                         //parse hosts file and populate block zone
+                         StreamReader sR = new StreamReader(fS, true);
+                         char[] trimSeperator = new char[] { ' ', '\t', '*', '.' };
+@@ -1452,7 +1579,7 @@
+                             if (IPAddress.TryParse(hostname, out _))
+                                 continue; //skip line when hostname is IP address
+ 
+-                            domains.Enqueue(hostname);
++                            domains.Add(hostname);
+                         }
+                     }
+ 
+@@ -1472,11 +1599,8 @@
+ 
+             protected override void LoadListZone()
+             {
+-                Queue<string> listQueue = ReadListFile();
+-                HashSet<string> listZone = new HashSet<string>(listQueue.Count);
+-
+-                while (listQueue.Count > 0)
+-                    listZone.Add(listQueue.Dequeue());
++                DomainSet listZone = ReadListFile();
++                listZone.Seal();
+ 
+                 _listZone = listZone;
+             }
+@@ -1594,8 +1718,8 @@
+         {
+             #region variables
+ 
+-            HashSet<string> _allowedListZone = [];
+-            HashSet<string> _blockedListZone = [];
++            DomainSet _allowedListZone = new DomainSet();
++            DomainSet _blockedListZone = new DomainSet();
+ 
+             #endregion
+ 
+@@ -1609,10 +1733,10 @@
+ 
+             #region private
+ 
+-            private void ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains)
++            private void ReadAdblockListFile(out DomainSet allowedDomains, out DomainSet blockedDomains)
+             {
+-                allowedDomains = new Queue<string>();
+-                blockedDomains = new Queue<string>();
++                allowedDomains = new DomainSet();
++                blockedDomains = new DomainSet();
+ 
+                 try
+                 {
+@@ -1620,6 +1744,8 @@
+ 
+                     using (FileStream fS = new FileStream(_listFilePath, FileMode.Open, FileAccess.Read))
+                     {
++                        blockedDomains.EnsureCapacity((int)Math.Min(fS.Length, Array.MaxLength)); //the names take less space than the file
++
+                         //parse hosts file and populate block zone
+                         StreamReader sR = new StreamReader(fS, true);
+                         char[] trimSeperator = new char[] { ' ', '\t' };
+@@ -1648,14 +1774,14 @@
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(domain);
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(2);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(domain);
+                                 }
+                             }
+                             else if (line.StartsWith("@@||", StringComparison.Ordinal))
+@@ -1667,14 +1793,14 @@
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(domain);
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(4);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(domain);
+                                 }
+                             }
+                         }
+@@ -1694,16 +1820,10 @@
+ 
+             protected override void LoadListZone()
+             {
+-                ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains);
+-
+-                HashSet<string> allowedListZone = new HashSet<string>(allowedDomains.Count);
+-                HashSet<string> blockedListZone = new HashSet<string>(blockedDomains.Count);
+-
+-                while (allowedDomains.Count > 0)
+-                    allowedListZone.Add(allowedDomains.Dequeue());
++                ReadAdblockListFile(out DomainSet allowedListZone, out DomainSet blockedListZone);
+ 
+-                while (blockedDomains.Count > 0)
+-                    blockedListZone.Add(blockedDomains.Dequeue());
++                allowedListZone.Seal();
++                blockedListZone.Seal();
+ 
+                 _allowedListZone = allowedListZone;
+                 _blockedListZone = blockedListZone;

@@ -1,0 +1,5 @@
+original MEM=384m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+original MEM=320m start: names of the biggest list blocked 43 of 150, OutOfMemoryException lines in the app log 1
+original MEM=256m start: names of the biggest list blocked 43 of 150, OutOfMemoryException lines in the app log 1
+original MEM=384m reload: did not complete (reload did not complete: 45 of 46 reads)
+original MEM=320m reload: did not complete (reload did not complete: 23 of 46 reads)

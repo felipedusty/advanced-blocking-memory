@@ -1,0 +1,22 @@
+diff --git a/Apps/AdvancedBlockingApp/App.cs b/Apps/AdvancedBlockingApp/App.cs
+index 97e13a4..8aa6bc4 100644
+--- a/Apps/AdvancedBlockingApp/App.cs
++++ b/Apps/AdvancedBlockingApp/App.cs
+@@ -1479,6 +1479,8 @@ namespace AdvancedBlocking
+                     listZone.Add(listQueue.Dequeue());
+ 
+                 _listZone = listZone;
++                System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
++                GC.Collect();
+             }
+ 
+             #endregion
+@@ -1707,6 +1709,8 @@ namespace AdvancedBlocking
+ 
+                 _allowedListZone = allowedListZone;
+                 _blockedListZone = blockedListZone;
++                System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
++                GC.Collect();
+             }
+ 
+             #endregion

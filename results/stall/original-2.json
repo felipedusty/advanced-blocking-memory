@@ -1,0 +1,42 @@
+{
+  "variant": "original",
+  "run_tag": "-stall2",
+  "app_sha256": "1558d3d917b7ddb4cf265bc21a206eb4cd6cb887075374a59a1dbeb3c9b895cd",
+  "rate": 200.0,
+  "threshold_ms": 10.0,
+  "windows_s": {
+    "startup": 2.1,
+    "reload": 61.9,
+    "settle": 10.3
+  },
+  "queries": {
+    "startup": 0,
+    "reload": 12207,
+    "settle": 2000
+  },
+  "worst_reply_ms": {
+    "startup": 0.0,
+    "reload": 34.9,
+    "settle": 16.8
+  },
+  "slow_replies": {
+    "startup": {
+      "count": 2,
+      "max_ms": 25.5,
+      "over_50_ms": 0,
+      "over_100_ms": 0
+    },
+    "reload": {
+      "count": 29,
+      "max_ms": 34.9,
+      "over_50_ms": 0,
+      "over_100_ms": 0
+    },
+    "settle": {
+      "count": 2,
+      "max_ms": 16.8,
+      "over_50_ms": 0,
+      "over_100_ms": 0
+    }
+  }
+}

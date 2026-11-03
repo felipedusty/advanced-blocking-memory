@@ -1,0 +1,42 @@
+{
+  "variant": "patched",
+  "run_tag": "-stall2",
+  "app_sha256": "38d0d40eacffcd285d084e54348c1a38dfbcb325bf93b3595c1cc3bd193f0895",
+  "rate": 200.0,
+  "threshold_ms": 10.0,
+  "windows_s": {
+    "startup": 2.1,
+    "reload": 62.3,
+    "settle": 10.5
+  },
+  "queries": {
+    "startup": 36,
+    "reload": 12200,
+    "settle": 1800
+  },
+  "worst_reply_ms": {
+    "startup": 1.9,
+    "reload": 19.4,
+    "settle": 2.4
+  },
+  "slow_replies": {
+    "startup": {
+      "count": 0,
+      "max_ms": 0.0,
+      "over_50_ms": 0,
+      "over_100_ms": 0
+    },
+    "reload": {
+      "count": 1,
+      "max_ms": 19.4,
+      "over_50_ms": 0,
+      "over_100_ms": 0
+    },
+    "settle": {
+      "count": 1,
+      "max_ms": 10.5,
+      "over_50_ms": 0,
+      "over_100_ms": 0
+    }
+  }
+}

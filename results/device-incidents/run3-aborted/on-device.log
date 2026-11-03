@@ -1,0 +1,21 @@
+2026-11-03T12:29:05Z host: aarch64 969 MiB, 4 cores, kernel 6.18.45-current-sunxi64
+2026-11-03T12:29:05Z dns-server and technitium-dns-watchdog.timer stopped; MemAvailable 582 MiB
+2026-11-03T12:29:05Z == original (start)
+done start
+2026-11-03T12:34:10Z == hash64-set
+== hash64-set (cand/h64set)
+461bcd0b79bf5f3c
+FAIL run 3
+cp: cannot stat 'results/patched-run3.reports.txt': No such file or directory
+reports: differ from hash64-set (the original was not queried)
+FAIL latency
+cp: cannot stat 'results/lat-original-?.latency.json': No such file or directory
+cp: cannot stat 'results/lat-patched-?.latency.json': No such file or directory
+done cand
+2026-11-03T12:41:22Z == hash64-index2
+== hash64-index2 (cand/h64index2)
+11d2e11fb33a5e02
+FAIL run 3
+cp: cannot stat 'results/patched-run3.reports.txt': No such file or directory
+reports: differ from hash64-index2 (the original was not queried)
+2026-11-03T12:45:59Z cleanup: dns-server exited (left stopped), technitium-dns-watchdog.timer inactive

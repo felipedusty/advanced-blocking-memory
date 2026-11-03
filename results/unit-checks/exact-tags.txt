@@ -1,0 +1,31 @@
+variant: exact-csr
+app_sha256: 8233b3683cecfbb345e4a871e7d41260c44446b2eb4bafd591b124abeaea2723
+
+An issue was encountered verifying workloads. For more information, run "dotnet workload update".
+ok: an empty set sealed contains nothing
+ok: an empty set does not contain the empty name
+ok: an unsealed empty set contains nothing
+ok: a one-entry set finds only the entry, not its prefixes, suffixes or neighbours
+ok: entries that are prefixes of each other stay distinct
+ok: the empty name (root) is stored and found, and nothing else is
+ok: membership is ordinal, so case is significant
+ok: hyphen, underscore, slash, wildcard label and digits are stored and found
+ok: test names have the expected lengths
+ok: names of 253, 254 and 255 characters (the largest length byte is 255) are stored and found
+ok: a query over 255 characters is not found and does not throw
+ok: a query the parsers never store is not found (11 chars, first char U+0065)
+ok: a query the parsers never store is not found (5 chars, first char U+4F8B)
+ok: a query the parsers never store is not found (11 chars, first char U+0065)
+ok: a query the parsers never store is not found (11 chars, first char U+0065)
+ok: a query the parsers never store is not found (9 chars, first char U+D800)
+ok: a query the parsers never store is not found (12 chars, first char U+0065)
+ok: a query the parsers never store is not found (255 chars, first char U+00E9)
+ok: a query the parsers never store is not found (11 chars, first char U+0045)
+ok: Count keeps the raw parser count and duplicates do not break lookups
+ok: 5000 entries added past the initial buffer are all found, the next one is not
+ok: a pre-sized buffer larger than the names is trimmed correctly by Seal
+ok: entries sharing 240 bytes are all found, and their prefix and neighbours are not
+ok: sets of 1 to 1000 names (around every bucket-count boundary) find all names and no neighbours
+ok: seeded differential against HashSet<string> (3000 entries, alphabet 3): 54864 present and 45136 absent probes, 0 mismatches
+ok: seeded differential against HashSet<string> (200000 entries, alphabet 38): 144656 present and 255344 absent probes, 0 mismatches
+all bucketed DomainSet boundary checks passed

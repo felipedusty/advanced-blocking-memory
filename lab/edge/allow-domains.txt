@@ -1,0 +1,3 @@
+# plain allow list
+edge-allowed.example.com
+edge-both.example.com

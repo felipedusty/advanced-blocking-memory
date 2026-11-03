@@ -1,0 +1,19 @@
+{
+  "variant": "patched",
+  "run_tag": "-reload",
+  "image": "technitium/dns-server:15.6.2",
+  "app_sha256": "11d2e11fb33a5e0216217ea0638bfc4ee3a781633fd497bb7d265e8a95e9ddac",
+  "memory_limit": "none",
+  "memory_swap": "none",
+  "lists_expected": 23,
+  "list_reads_total": 46,
+  "peak_bytes": 203149312,
+  "peak_at_ms": 86854,
+  "cgroup_memory_peak_bytes": 207482880,
+  "steady_median_bytes": 201646080,
+  "final_bytes": 201404416,
+  "load_done_ms": 10281,
+  "reload_done_ms": 82360,
+  "settle_s": 10,
+  "window_ms": 92509
+}

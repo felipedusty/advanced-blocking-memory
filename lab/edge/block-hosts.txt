@@ -1,0 +1,9 @@
+# hosts-format block list (also tests duplicate lines)
+0.0.0.0 edge-hosts.example.com
+127.0.0.1 edge-hosts2.example.com
+0.0.0.0 edge-hosts.example.com
+# the allow list and the static allow entry must still win over these
+0.0.0.0 edge-allowed.example.com
+0.0.0.0 edge-static-allowed.example.com
+# the plain parser lowercases its entries, so this blocks the lowercase query
+0.0.0.0 EDGE-UPPER-HOSTS.example.com

@@ -1,0 +1,8 @@
+exact-tags MEM=192m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=160m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=128m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=112m start: names of the biggest list blocked 0 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=96m start: names of the biggest list blocked 0 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=256m reload: completed, cgroup peak 229.1 MiB
+exact-tags MEM=192m reload: completed, cgroup peak 192.0 MiB
+exact-tags MEM=160m reload: did not complete (the container exited before the window ended (state in results/reload-patched-sl160m.state.txt))

@@ -1,0 +1,10 @@
+! adblock-format list
+||edge-adblock.example.com^
+||edge-all.example.com^$all
+||edge-third.example.com^$third-party
+||edge-both.example.com^
+||edge-adblock-allowed.example.com^
+@@||edge-adblock-allowed.example.com^
+! the adblock parser stores its entries as written, so this cannot match the
+! lowercased query
+||EDGE-UPPER-ADBLOCK.example.com^

@@ -1,0 +1,270 @@
+name: lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      startup_runs:
+        description: "startup repetitions per variant"
+        default: "3"
+      latency_repeats:
+        description: "latency repetitions per domain"
+        default: "100"
+      only:
+        description: "run only these candidates, comma separated (default: all)"
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  # Dispatches run side by side and never cancel each other: the exhaustive step is
+  # expensive and a cancelled run leaves half an artifact.
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: plan
+    # The lab is only meant to run on the public repository; a dispatch on a
+    # private repo must skip the jobs rather than spend minutes on them.
+    if: ${{ github.event.repository.visibility == 'public' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Matrix
+        id: matrix
+        env:
+          ONLY: ${{ inputs.only }}
+        # candidates x platforms, from .github/candidates.json; `only` (comma separated)
+        # limits a dispatch to some candidates, for example only=hash64,exact
+        run: |
+          set -euo pipefail
+          matrix=$(jq -c --arg only "$ONLY" '
+            [{tag: "amd64", os: "ubuntu-24.04", platform: "linux/amd64"},
+             {tag: "arm64", os: "ubuntu-24.04-arm", platform: "linux/arm64"},
+             {tag: "armv7", os: "ubuntu-24.04", platform: "linux/arm/v7"}] as $platforms
+            | {include: [.[] | . as $c
+                | select($only == "" or ((",\($only),") | contains(",\($c.candidate),")))
+                | $platforms[] | . + $c]}
+          ' .github/candidates.json)
+          echo "$matrix" | jq .
+          [ "$(echo "$matrix" | jq '.include | length')" -gt 0 ] || { echo "no candidate matches '$ONLY'" >&2; exit 1; }
+          echo "matrix=$matrix" >>"$GITHUB_OUTPUT"
+
+  lab:
+    name: lab (${{ matrix.tag }}, ${{ matrix.candidate }})
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 360
+    env:
+      STARTUP_RUNS: ${{ inputs.startup_runs }}
+      LATENCY_REPEATS: ${{ inputs.latency_repeats }}
+      PLATFORM: ${{ matrix.platform }}
+      PATCH_DIR: ${{ matrix.patch_dir }}
+      CANDIDATE: ${{ matrix.candidate }}
+      SIZE_GATES: ${{ matrix.size_gates }}
+      LISTS_TIMEOUT: 3600
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install QEMU
+        if: matrix.tag == 'armv7'
+        run: docker run --privileged --rm tonistiigi/binfmt --install arm
+
+      - name: Environment
+        run: |
+          uname -a
+          nproc
+          free -m
+          docker version
+          python3 --version
+
+      - name: Validate inputs
+        run: |
+          for name in STARTUP_RUNS LATENCY_REPEATS; do
+            value=${!name}
+            case "$value" in
+              '' | *[!0-9]* | 0*)
+                echo "$name must be a positive integer, got '$value'" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Lists and build
+        run: |
+          set -euo pipefail
+          lab/fetch-lists.sh
+          mkdir -p results
+          # Do not let stale results from a reused workspace be uploaded as
+          # ARM64 output or stand in for a step that failed to write its file.
+          find results -maxdepth 1 -type f -delete
+          sha256sum lab/lists/* > results/lists.sha256
+          lab/build-app.sh original
+          lab/build-app.sh patched
+
+      - name: DomainSet boundaries
+        if: matrix.test == 'domainset'
+        run: lab/domain-set-test.sh patched
+
+      - name: Bucketed DomainSet boundaries
+        if: matrix.test == 'nameset'
+        run: lab/name-set-test.sh
+
+      - name: Hash set checks
+        if: matrix.test == 'hash'
+        run: HASH_BITS=${{ matrix.hash_bits }} lab/hash-test.sh patched
+
+      - name: Startup memory and functional check
+        if: matrix.tag != 'armv7'
+        run: |
+          set -euo pipefail
+          for variant in original patched; do
+            for run in $(seq 1 "$STARTUP_RUNS"); do
+              RUN_TAG="-run$run" lab/run-lab.sh "$variant"
+            done
+            RUN_TAG="-run$STARTUP_RUNS" lab/check-function.sh "$variant"
+          done
+
+      - name: Latency rounds
+        if: matrix.tag != 'armv7'
+        # Three interleaved rounds per variant; compare-ci.py reports the medians.
+        # A single run per variant is too noisy to compare.
+        run: LATENCY_TAG="-run$STARTUP_RUNS" lab/latency-rounds.sh 3
+
+      - name: Reload memory
+        if: matrix.tag != 'armv7'
+        run: |
+          set -euo pipefail
+          RUN_TAG=-reload lab/run-reload.sh original
+          RUN_TAG=-reload lab/run-reload.sh patched
+
+      - name: Exhaustive differential
+        if: matrix.tag != 'armv7'
+        run: |
+          set -euo pipefail
+          for variant in original patched; do
+            # The forwarder is intentionally dead: the preflight aborts on
+            # NOERROR or NXDOMAIN; a timeout is inconclusive and the pass
+            # continues, so do not re-add null-upstream here.
+            RUN_TAG=-exhaustive FORWARDERS=127.0.0.1:5353 \
+              GRACE_S=5 lab/run-lab.sh "$variant"
+            rc=0
+            docker run --rm --network container:dns-lab \
+              -e DNS_PORT=53 -e WORKERS=8 \
+              --user "$(id -u):$(id -g)" \
+              -v "$PWD":/work -w /work \
+              python:3.13-slim \
+              python3 lab/exhaustive.py "$variant" "-exhaustive" 8 || rc=$?
+            # Snapshot the log after the pass, before the next run-lab.sh
+            # replaces the container; run-lab.sh only captured startup. A
+            # failed pass still leaves the log for the artifact upload. If the
+            # server died, docker exec cannot run: copy the filesystem of the
+            # stopped container instead and record the container state.
+            docker logs dns-lab >"results/$variant-exhaustive.pass.stdout.txt" 2>&1 || true
+            docker inspect -f 'oom_killed={{.State.OOMKilled}} exit_code={{.State.ExitCode}}' \
+              dns-lab >"results/$variant-exhaustive.pass.state.txt" 2>/dev/null || true
+            if ! docker exec dns-lab sh -c 'cat /var/log/technitium/dns/*.log 2>/dev/null' \
+              >"results/$variant-exhaustive.pass.applog" 2>/dev/null; then
+              tmp=$(mktemp -d)
+              if docker cp "dns-lab:/var/log/technitium/dns/." "$tmp" 2>/dev/null; then
+                cat "$tmp"/*.log >"results/$variant-exhaustive.pass.applog" 2>/dev/null || true
+              fi
+              rm -rf "$tmp"
+            fi
+            [ "$rc" -eq 0 ] || exit "$rc"
+          done
+
+      - name: Near-miss differential
+        if: matrix.tag != 'armv7'
+        run: |
+          set -euo pipefail
+          for variant in original patched; do
+            RUN_TAG=-near-miss FORWARDERS=127.0.0.1:5353 \
+              GRACE_S=5 lab/run-lab.sh "$variant"
+            docker run -d --rm --name null-upstream --network container:dns-lab \
+              --user "$(id -u):$(id -g)" \
+              -v "$PWD":/work -w /work \
+              python:3.13-slim python3 lab/null-upstream.py
+            sleep 1
+            docker run --rm --network container:dns-lab \
+              -e DNS_PORT=53 \
+              --user "$(id -u):$(id -g)" \
+              -v "$PWD":/work -w /work \
+              python:3.13-slim \
+              python3 lab/near-miss.py "$variant" "-near-miss" 8
+            docker rm -f null-upstream
+          done
+
+      - name: Edge cases
+        if: matrix.tag != 'armv7'
+        run: |
+          set -euo pipefail
+          for variant in original patched; do
+            RUN_TAG=-edge APP_CONFIG=lab/config/dnsApp.edge.config EDGE=1 \
+              FORWARDERS=127.0.0.1:5353 lab/run-lab.sh "$variant"
+            docker run -d --rm --name null-upstream --network container:dns-lab \
+              --user "$(id -u):$(id -g)" \
+              -v "$PWD":/work -w /work \
+              python:3.13-slim python3 lab/null-upstream.py
+            sleep 1
+            RUN_TAG=-edge lab/check-edge.sh "$variant"
+            docker rm -f null-upstream
+          done
+          diff -u results/original-edge.edge.txt results/patched-edge.edge.txt
+
+      - name: Compare and summarize
+        if: ${{ !cancelled() && matrix.tag != 'armv7' }}
+        run: python3 lab/compare-ci.py
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: results-${{ matrix.tag }}-${{ matrix.candidate }}
+          retention-days: 90
+          path: |
+            results/*.json
+            results/*.reports.txt
+            results/*.applog
+            results/*.pass.*.txt
+            results/*.state.txt
+            results/*.edge.txt
+            results/*.boundary.txt
+            results/lists.sha256
+
+  summary:
+    name: summary (all candidates side by side)
+    needs: [plan, lab]
+    # also when a leg failed: the table says which candidate differs
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download the results of every leg
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: results-*
+          path: records
+
+      - name: Table
+        run: |
+          set -euo pipefail
+          {
+            echo "## All candidates, each against its own original"
+            echo
+            echo "Every leg measured its own original next to its candidate, on the same runner."
+            echo "Candidates are sorted by the mean steady-memory ratio. Lines are the patch's added and removed lines."
+            echo
+            python3 lab/ci-table.py records
+          } | tee -a "$GITHUB_STEP_SUMMARY"

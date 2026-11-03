@@ -1,0 +1,112 @@
+Wide-key experiments, 2026-11-02. Same lists and harness as hash-risk-20261102.txt (lab/hash-risk/Program.cs).
+Lane A is the patch's FNV-1a (prime 1099511628211). Lane B is FNV-1a with the multiplier 0x9E3779B97F4A7C15, unless the section says otherwise.
+The first pair128 section ('lane B: FNV-1a with another basis') is the rejected design: the same multiplier with another basis is NOT independent.
+Every width row below uses lane B = the golden-ratio multiplier. The 'u128' row of hash-risk-20261102.txt used an xorshift lane (not a validated hash) and is superseded by these rows. 'dict96' is Dictionary<ulong,uint> (64-bit key plus 32 bits of lane B); 'tuple3' is (uint,uint,uint).
+
+################ pair128: two lanes, joint key truncated, real entries
+entries: 2,098,411; the key is lane A (the patch's FNV-1a) with lane B; each lane keeps w bits, so the joint key has 2w bits;
+expected colliding pairs per base pair = C(n,2)/2^(2w)
+
+lane B: FNV-1a with another basis: 100 base pairs, 37 s
+  top 16+16 bits   obs  5,586,786  exp     51,261.5  ratio 108.986  z 24449.12
+  top 18+18 bits   obs  1,525,380  exp      3,203.8  ratio 476.110  z 26892.39
+  top 20+20 bits   obs    376,938  exp        200.2  ratio 1882.430  z 26623.41
+  top 22+22 bits   obs     99,418  exp         12.5  ratio 7943.903  z 28099.25
+  low 16+16 bits   obs  9,222,417  exp     51,261.5  ratio 179.909  z 40506.86
+  low 20+20 bits   obs    521,023  exp        200.2  ratio 2601.991  z 36805.64
+
+lane B: FNV-1a with the multiplier 0x9E3779B97F4A7C15: 100 base pairs, 35 s
+  top 16+16 bits   obs     51,019  exp     51,261.5  ratio  0.995  z  -1.07
+  top 18+18 bits   obs      3,328  exp      3,203.8  ratio  1.039  z   2.19
+  top 20+20 bits   obs        215  exp        200.2  ratio  1.074  z   1.04
+  top 22+22 bits   obs         12  exp         12.5  ratio  0.959  z  -0.15
+  low 16+16 bits   obs    102,807  exp     51,261.5  ratio  2.006  z 227.66
+  low 20+20 bits   obs        388  exp        200.2  ratio  1.938  z  13.27
+
+control: sha256 in both lanes: 12 base pairs, 18 s
+  top 16+16 bits   obs      6,173  exp      6,151.4  ratio  1.004  z   0.28
+  top 18+18 bits   obs        406  exp        384.5  ratio  1.056  z   1.10
+  top 20+20 bits   obs         29  exp         24.0  ratio  1.207  z   1.01
+  top 22+22 bits   obs          1  exp          1.5  ratio  0.666  z  -0.41
+  low 16+16 bits   obs      6,222  exp      6,151.4  ratio  1.011  z   0.90
+  low 20+20 bits   obs         17  exp         24.0  ratio  0.707  z  -1.43
+
+################ pair96: low bits of lane A with top bits of lane B (96-bit design)
+entries: 2,098,411; key = low w bits of lane A (the weak end of FNV-1a) with the top w bits of lane B; expected pairs per base pair = C(n,2)/2^(2w)
+  low 16 of A + top 16 of B   obs     51,420  exp     51,261.5  ratio  1.003  z   0.70
+  low 18 of A + top 18 of B   obs      3,146  exp      3,203.8  ratio  0.982  z  -1.02
+  low 20 of A + top 20 of B   obs        180  exp        200.2  ratio  0.899  z  -1.43
+  low 22 of A + top 22 of B   obs         15  exp         12.5  ratio  1.199  z   0.70
+
+################ probe128: unlisted names against the real entries, joint key
+entries 2,098,411; 3 random bases; a false positive = an unlisted probe whose reduced hash equals one of the entries' reduced hashes
+
+random names 8-20 letters + tld: 59,999,997 unlisted probes over 3 bases
+  top 16+16 bits   obs     29,388  exp     29,307.3  ratio  1.003  z   0.47
+  top 18+18 bits   obs      1,910  exp      1,832.1  ratio  1.043  z   1.82
+  top 20+20 bits   obs        138  exp        114.5  ratio  1.205  z   2.20
+  low 16+16 bits   obs     58,804  exp     29,307.3  ratio  2.006  z 172.30
+
+neighbours of every entry (x+e, e+x, e[1..], e[..^1], swap, upper, tld): 43,948,392 unlisted probes over 3 bases
+  top 16+16 bits   obs     21,252  exp     21,466.8  ratio  0.990  z  -1.47
+  top 18+18 bits   obs      1,385  exp      1,342.0  ratio  1.032  z   1.17
+  top 20+20 bits   obs         93  exp         83.9  ratio  1.109  z   1.00
+  low 16+16 bits   obs     42,720  exp     21,466.8  ratio  1.990  z 145.06
+
+counters: host{i}.example.com and a{i}.net: 24,000,000 unlisted probes over 3 bases
+  top 16+16 bits   obs     11,642  exp     11,722.9  ratio  0.993  z  -0.75
+  top 18+18 bits   obs        737  exp        732.9  ratio  1.006  z   0.15
+  top 20+20 bits   obs         43  exp         45.8  ratio  0.939  z  -0.41
+  low 16+16 bits   obs     23,731  exp     11,722.9  ratio  2.024  z 110.91
+
+every label up to 4 chars over [a-z0-9-] + .com: 5,771,799 unlisted probes over 3 bases
+  top 16+16 bits   obs      2,865  exp      2,819.3  ratio  1.016  z   0.86
+  top 18+18 bits   obs        179  exp        176.2  ratio  1.016  z   0.21
+  top 20+20 bits   obs         14  exp         11.0  ratio  1.271  z   0.90
+  low 16+16 bits   obs      5,624  exp      2,819.3  ratio  1.995  z  52.82
+
+################ dense, dense128, longsub, longsub128
+== dense
+every string of 1 to 5 characters over 38 characters: 81,376,658 strings; expected colliding pairs per base at width k = C(n,2)/2^k
+  top 40 bits   obs        300  exp      6,022.8  ratio  0.050  z -73.74
+  top 44 bits   obs          0  exp        376.4  ratio  0.000  z -19.40
+  top 48 bits   obs          0  exp         23.5  ratio  0.000  z  -4.85
+  top 52 bits   obs          0  exp          1.5  ratio  0.000  z  -1.21
+  top 56 bits   obs          0  exp          0.1  ratio  0.000  z  -0.30
+  top 64 bits   obs          0  exp          0.0  ratio  0.000  z  -0.02
+== dense128
+every string of 1 to 5 characters over 38 characters: 81,376,658 strings; expected colliding pairs per base at width k = C(n,2)/2^k
+  top 20+20 bits   obs      6,144  exp      6,022.8  ratio  1.020  z   1.56
+  top 22+22 bits   obs        402  exp        376.4  ratio  1.068  z   1.32
+  top 24+24 bits   obs         30  exp         23.5  ratio  1.275  z   1.33
+== longsub
+one- and two-position substitutions in a 250-character name: 40,347,000 distinct strings; expected colliding pairs per base at width k = C(n,2)/2^k
+  top 40 bits   obs      1,507  exp      1,480.5  ratio  1.018  z   0.69
+  top 44 bits   obs         98  exp         92.5  ratio  1.059  z   0.57
+  top 48 bits   obs          7  exp          5.8  ratio  1.210  z   0.51
+  top 52 bits   obs          0  exp          0.4  ratio  0.000  z  -0.60
+  top 56 bits   obs          0  exp          0.0  ratio  0.000  z  -0.15
+  top 64 bits   obs          0  exp          0.0  ratio  0.000  z  -0.01
+== longsub128
+one- and two-position substitutions in a 250-character name: 40,347,000 distinct strings; expected colliding pairs per base at width k = C(n,2)/2^k
+  top 20+20 bits   obs      1,407  exp      1,480.5  ratio  0.950  z  -1.91
+  top 22+22 bits   obs         81  exp         92.5  ratio  0.875  z  -1.20
+  top 24+24 bits   obs          4  exp          5.8  ratio  0.692  z  -0.74
+
+################ width: memory and lookup of the 21 per-list sets, wider keys (lane B = golden-ratio multiplier from tuple on)
+string  21 per-list sets  heap   203.4 MiB  miss    3841 ns  hit    1860 ns
+u64     21 per-list sets  heap    66.5 MiB  miss    4158 ns  hit    1833 ns
+u128    21 per-list sets  heap   106.9 MiB  miss    4945 ns  hit    2129 ns
+tuple   21 per-list sets  heap    86.7 MiB  miss    4788 ns  hit    2084 ns
+tuple-cmp 21 per-list sets  heap    86.7 MiB  miss    4489 ns  hit    1962 ns
+dict96: 0 entries share their 64-bit key with an earlier entry (same name listed twice or a real 64-bit collision)
+dict96  21 per-list sets  heap    86.7 MiB  miss    4710 ns  hit    2049 ns
+u64     21 per-list sets  heap    66.5 MiB  miss    4040 ns  hit    1837 ns
+u128    21 per-list sets  heap   106.9 MiB  miss    4809 ns  hit    2076 ns
+
+################ width: 96-bit tuple3 against 64-bit and 128-bit tuple
+u64     21 per-list sets  heap    66.5 MiB  miss    4209 ns  hit    1816 ns
+tuple3  21 per-list sets  heap    86.7 MiB  miss    4709 ns  hit    2095 ns
+tuple3-cmp 21 per-list sets  heap    86.7 MiB  miss    4345 ns  hit    1919 ns
+tuple-cmp 21 per-list sets  heap    86.7 MiB  miss    4140 ns  hit    1854 ns
+u64     21 per-list sets  heap    66.5 MiB  miss    4177 ns  hit    2043 ns

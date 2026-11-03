@@ -1,0 +1,53 @@
+2026-11-03T08:41:32Z host: aarch64 969 MiB, 4 cores, kernel 6.18.45-current-sunxi64
+2026-11-03T08:41:33Z before: dns-server running restarts=0 started=2026-11-03T08:41:19.587699929Z
+2026-11-03T08:41:33Z watchdog timer: inactive
+2026-11-03T08:41:35Z dns-server stopped; MemAvailable 552 MiB
+2026-11-03T08:41:35Z == original (start)
+FAIL original check
+done start
+2026-11-03T08:48:39Z == hash64-set
+== hash64-set (cand/h64set)
+461bcd0b79bf5f3c
+reports: differ
+FAIL latency
+cp: cannot stat 'results/lat-original-?.latency.json': No such file or directory
+cp: cannot stat 'results/lat-patched-?.latency.json': No such file or directory
+done cand
+2026-11-03T08:56:34Z == hash64-index2
+== hash64-index2 (cand/h64index2)
+11d2e11fb33a5e02
+reports: differ
+FAIL latency
+cp: cannot stat 'results/lat-original-?.latency.json': No such file or directory
+cp: cannot stat 'results/lat-patched-?.latency.json': No such file or directory
+done cand
+2026-11-03T09:04:29Z == exact-tags
+== exact-tags (cand/extags)
+8233b3683cecfbb3
+reports: differ
+FAIL latency
+cp: cannot stat 'results/lat-original-?.latency.json': No such file or directory
+cp: cannot stat 'results/lat-patched-?.latency.json': No such file or directory
+done cand
+2026-11-03T09:12:26Z == original (end)
+done end
+original, start of session : startup 303.9  anon 258.3  reload 454.4 MiB
+original, end of session   : startup 315.5  anon 257.9  reload 432.5 MiB
+reference original         : startup 309.7  anon 258.1  reload 443.5 MiB
+
+| candidate | lines + / - | startup peak | steady anon | reload peak | anon ratio | startup ratio | reload ratio | p50 (paired) | qps (paired) | 500 reports |
+|---|---|---|---|---|---|---|---|---|---|---|
+Traceback (most recent call last):
+  File "/root/abm-lab/lab/session-table.py", line 77, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/root/abm-lab/lab/session-table.py", line 59, in main
+    lat_o = [load(f"{d}/lat-original-{i}.latency.json") for i in (1, 2, 3)]
+             ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/abm-lab/lab/session-table.py", line 15, in load
+    with open(path, encoding="utf-8") as f:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/root/abm-lab/results/session-pi/exact-tags/lat-original-1.latency.json'
+2026-11-03T09:17:21Z all done
+2026-11-03T09:17:21Z restoring: guard off, dns-lab removed, dns-server started, watchdog timer started
+2026-11-03T09:17:44Z dns-server: running restarts=0 probe: answer rcode 0 answers 2 watchdog: active

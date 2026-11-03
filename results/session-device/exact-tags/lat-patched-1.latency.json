@@ -1,0 +1,14 @@
+{
+  "variant": "patched",
+  "run_tag": "-run3",
+  "app_sha256": "8233b3683cecfbb345e4a871e7d41260c44446b2eb4bafd591b124abeaea2723",
+  "queries": 50000,
+  "errors": 0,
+  "warmup_errors": 0,
+  "elapsed_s": 14.42,
+  "qps": 3467.4,
+  "p50_us": 213.9,
+  "p95_us": 438.3,
+  "p99_us": 802.8,
+  "mean_us": 262.0
+}

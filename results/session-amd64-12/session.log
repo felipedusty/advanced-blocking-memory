@@ -1,0 +1,25 @@
+== hash64-set (patch/experiments/hash64-set)
+size: 49664 bytes
+461bcd0b79bf5f3c
+reports: identical
+done cand
+== hash64-index2 (patch/experiments/hash64-index2)
+size: 50688 bytes
+11d2e11fb33a5e02
+reports: identical
+done cand
+== exact-tags (patch/experiments/exact-tags)
+size: 50688 bytes
+8233b3683cecfbb3
+reports: identical
+done cand
+done end
+original, start of session : startup 296.3  anon 275.8  reload 537.9 MiB
+original, end of session   : startup 289.5  anon 269.1  reload 533.0 MiB
+reference original         : startup 292.9  anon 272.5  reload 535.4 MiB
+
+| candidate | lines + / - | startup peak | steady anon | reload peak | anon ratio | startup ratio | reload ratio | p50 (paired) | qps (paired) | 500 reports |
+|---|---|---|---|---|---|---|---|---|---|---|
+| exact-tags | +160 / -27 | 111.0 | 89.3 | 227.6 | 3.05x | 2.64x | 2.35x | 237.3 vs 238.1 µs (-0.3%) | 3744 vs 3686 (+1.6%, overlap) | identical |
+| hash64-index2 | +101 / -32 | 69.4 | 49.7 | 149.7 | 5.48x | 4.22x | 3.58x | 241.2 vs 260.0 µs (-7.2%) | 3578 vs 3234 (+10.6%, no overlap) | identical |
+| hash64-set | +56 / -32 | 103.0 | 82.9 | 217.7 | 3.29x | 2.84x | 2.46x | 238.3 vs 238.8 µs (-0.2%) | 3674 vs 3659 (+0.4%, overlap) | identical |

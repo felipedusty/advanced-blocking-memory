@@ -1,0 +1,30 @@
+variant: patched
+app_sha256: df0af632aab9e955e3fc73f1b08db37d8b01b102035d06827c3d0504f8d18e5d
+
+An issue was encountered verifying workloads. For more information, run "dotnet workload update".
+ok: test names have the expected lengths
+ok: 253-character name is stored and found
+ok: 254-character name is stored and found
+ok: 255-character name is stored and found
+ok: 256-character name is skipped
+ok: a 254-byte name in 127 characters is stored
+ok: a 256-byte name in 128 characters is skipped by the byte guard
+ok: RawCount keeps the raw parser count
+ok: all entries are found after an unsorted Add and Sort
+ok: a missing entry is not found
+ok: a 256-character name is not found on a populated set
+ok: a 256-byte name is not found on a populated set
+ok: Sort removed the duplicate (4 raw, 3 unique)
+ok: membership is ordinal, so case is significant
+ok: an empty set contains nothing
+ok: RawCount keeps 5000 added entries
+ok: all 5000 entries are found after the buffer and offsets grow and Sort
+ok: a missing entry is absent after growth
+ok: a one-entry set finds only the entry, not its prefixes, suffixes or neighbours
+ok: entries that are prefixes of each other stay distinct
+ok: the empty name is stored and found, and nothing else is
+ok: entries sharing 240 bytes are all found, and their prefix and neighbours are not
+ok: seeded differential against HashSet<string>: 45081 present and 54919 absent probes, 0 mismatches
+ok: Add after Sort throws InvalidOperationException
+ok: Contains before Sort throws InvalidOperationException
+all DomainSet boundary checks passed

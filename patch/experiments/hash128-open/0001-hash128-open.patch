@@ -1,0 +1,228 @@
+diff --git a/Apps/AdvancedBlockingApp/App.cs b/Apps/AdvancedBlockingApp/App.cs
+index 97e13a4..4c05ffd 100644
+--- a/Apps/AdvancedBlockingApp/App.cs
++++ b/Apps/AdvancedBlockingApp/App.cs
+@@ -168,6 +168,100 @@ namespace AdvancedBlocking
+             return false;
+         }
+ 
++        //the list sets keep a 128 bit hash of each domain instead of the string, in a table of 16 byte slots that is at most 75%
++        //full: about 21 bytes per domain against about 80 for the string in a HashSet. The hash is two FNV-1a lanes with different
++        //multipliers (the same multiplier with another basis is not independent). A listed hash equal to the hash of another name
++        //reports that name as listed: about 7e-33 per label looked up with 2.5 million entries. The bases are random per process,
++        //so the names that would collide change at every start and cannot be precomputed.
++        readonly static ulong _domainHashBasis1 = BitConverter.ToUInt64(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8));
++        readonly static ulong _domainHashBasis2 = BitConverter.ToUInt64(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8));
++
++        private static (ulong, ulong) GetDomainHash(string domain)
++        {
++            ulong hash1 = _domainHashBasis1;
++            ulong hash2 = _domainHashBasis2;
++
++            unchecked
++            {
++                foreach (char c in domain)
++                {
++                    hash1 = (hash1 ^ c) * 1099511628211UL;
++                    hash2 = (hash2 ^ c) * 11400714819323198485UL;
++                }
++            }
++
++            //the low bit of the first lane is the parity of the characters, which the second lane repeats, so it is used to mark a
++            //slot as taken: a taken slot never has a zero first word
++            return (hash1 | 1UL, hash2);
++        }
++
++        private sealed class DomainHashSet
++        {
++            public static readonly DomainHashSet Empty = new DomainHashSet(new Queue<(ulong, ulong)>());
++
++            readonly ulong[] _slots; //two words per slot: the first word is zero when the slot is free
++            readonly int _capacity;
++
++            public DomainHashSet(Queue<(ulong, ulong)> hashes)
++            {
++                _capacity = (int)(hashes.Count / 0.75) + 1;
++                _slots = new ulong[2 * _capacity];
++
++                foreach ((ulong hash1, ulong hash2) in hashes)
++                {
++                    int i = GetSlot(hash1);
++
++                    while ((_slots[2 * i] != 0) && ((_slots[2 * i] != hash1) || (_slots[2 * i + 1] != hash2)))
++                    {
++                        if (++i == _capacity)
++                            i = 0;
++                    }
++
++                    _slots[2 * i] = hash1;
++                    _slots[2 * i + 1] = hash2;
++                }
++            }
++
++            private int GetSlot(ulong hash1)
++            {
++                return (int)(((hash1 >> 32) * (uint)_capacity) >> 32);
++            }
++
++            public bool Contains((ulong, ulong) hash)
++            {
++                int i = GetSlot(hash.Item1);
++
++                while (_slots[2 * i] != 0)
++                {
++                    if ((_slots[2 * i] == hash.Item1) && (_slots[2 * i + 1] == hash.Item2))
++                        return true;
++
++                    if (++i == _capacity)
++                        i = 0;
++                }
++
++                return false;
++            }
++        }
++
++        private static bool IsZoneFound(DomainHashSet domains, string domain, out string? foundZone)
++        {
++            do
++            {
++                if (domains.Contains(GetDomainHash(domain)))
++                {
++                    foundZone = domain;
++                    return true;
++                }
++
++                domain = GetParentZone(domain)!;
++            }
++            while (domain is not null);
++
++            foundZone = null;
++            return false;
++        }
++
+         private static bool IsZoneFound(Dictionary<Uri, BlockList> listZones, string domain, out string? foundZone, out Uri? listUri)
+         {
+             foreach (KeyValuePair<Uri, BlockList> listZone in listZones)
+@@ -1334,7 +1428,7 @@ namespace AdvancedBlocking
+ 
+             readonly static char[] _popWordSeperator = new char[] { ' ', '\t' };
+ 
+-            HashSet<string> _listZone = [];
++            DomainHashSet _listZone = DomainHashSet.Empty;
+ 
+             #endregion
+ 
+@@ -1372,9 +1466,9 @@ namespace AdvancedBlocking
+                 return word;
+             }
+ 
+-            private Queue<string> ReadListFile()
++            private Queue<(ulong, ulong)> ReadListFile()
+             {
+-                Queue<string> domains = new Queue<string>();
++                Queue<(ulong, ulong)> domains = new Queue<(ulong, ulong)>();
+ 
+                 try
+                 {
+@@ -1452,7 +1546,7 @@ namespace AdvancedBlocking
+                             if (IPAddress.TryParse(hostname, out _))
+                                 continue; //skip line when hostname is IP address
+ 
+-                            domains.Enqueue(hostname);
++                            domains.Enqueue(GetDomainHash(hostname));
+                         }
+                     }
+ 
+@@ -1472,11 +1566,8 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                Queue<string> listQueue = ReadListFile();
+-                HashSet<string> listZone = new HashSet<string>(listQueue.Count);
+-
+-                while (listQueue.Count > 0)
+-                    listZone.Add(listQueue.Dequeue());
++                Queue<(ulong, ulong)> listQueue = ReadListFile();
++                DomainHashSet listZone = new DomainHashSet(listQueue);
+ 
+                 _listZone = listZone;
+             }
+@@ -1594,8 +1685,8 @@ namespace AdvancedBlocking
+         {
+             #region variables
+ 
+-            HashSet<string> _allowedListZone = [];
+-            HashSet<string> _blockedListZone = [];
++            DomainHashSet _allowedListZone = DomainHashSet.Empty;
++            DomainHashSet _blockedListZone = DomainHashSet.Empty;
+ 
+             #endregion
+ 
+@@ -1609,10 +1700,10 @@ namespace AdvancedBlocking
+ 
+             #region private
+ 
+-            private void ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains)
++            private void ReadAdblockListFile(out Queue<(ulong, ulong)> allowedDomains, out Queue<(ulong, ulong)> blockedDomains)
+             {
+-                allowedDomains = new Queue<string>();
+-                blockedDomains = new Queue<string>();
++                allowedDomains = new Queue<(ulong, ulong)>();
++                blockedDomains = new Queue<(ulong, ulong)>();
+ 
+                 try
+                 {
+@@ -1648,14 +1739,14 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Enqueue(GetDomainHash(domain));
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(2);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Enqueue(GetDomainHash(domain));
+                                 }
+                             }
+                             else if (line.StartsWith("@@||", StringComparison.Ordinal))
+@@ -1667,14 +1758,14 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Enqueue(GetDomainHash(domain));
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(4);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Enqueue(GetDomainHash(domain));
+                                 }
+                             }
+                         }
+@@ -1694,16 +1785,10 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains);
++                ReadAdblockListFile(out Queue<(ulong, ulong)> allowedDomains, out Queue<(ulong, ulong)> blockedDomains);
+ 
+-                HashSet<string> allowedListZone = new HashSet<string>(allowedDomains.Count);
+-                HashSet<string> blockedListZone = new HashSet<string>(blockedDomains.Count);
+-
+-                while (allowedDomains.Count > 0)
+-                    allowedListZone.Add(allowedDomains.Dequeue());
+-
+-                while (blockedDomains.Count > 0)
+-                    blockedListZone.Add(blockedDomains.Dequeue());
++                DomainHashSet allowedListZone = new DomainHashSet(allowedDomains);
++                DomainHashSet blockedListZone = new DomainHashSet(blockedDomains);
+ 
+                 _allowedListZone = allowedListZone;
+                 _blockedListZone = blockedListZone;

@@ -1,0 +1,5 @@
+2026-11-03T09:19:25Z host: aarch64 969 MiB, 4 cores, kernel 6.18.45-current-sunxi64
+2026-11-03T09:19:25Z before: dns-server running restarts=0 started=2026-11-03T09:17:27.15157032Z
+2026-11-03T09:19:25Z watchdog timer: inactive
+2026-11-03T09:19:29Z dns-server stopped; MemAvailable 541 MiB
+2026-11-03T09:19:29Z == original (start)

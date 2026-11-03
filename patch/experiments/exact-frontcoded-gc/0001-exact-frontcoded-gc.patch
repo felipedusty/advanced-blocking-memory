@@ -1,0 +1,483 @@
+diff --git a/Apps/AdvancedBlockingApp/App.cs b/Apps/AdvancedBlockingApp/App.cs
+index 97e13a4..c3b2965 100644
+--- a/Apps/AdvancedBlockingApp/App.cs
++++ b/Apps/AdvancedBlockingApp/App.cs
+@@ -168,6 +168,24 @@ namespace AdvancedBlocking
+             return false;
+         }
+ 
++        private static bool IsZoneFound(DomainSet domains, string domain, out string? foundZone)
++        {
++            do
++            {
++                if (domains.Contains(domain))
++                {
++                    foundZone = domain;
++                    return true;
++                }
++
++                domain = GetParentZone(domain)!;
++            }
++            while (domain is not null);
++
++            foundZone = null;
++            return false;
++        }
++
+         private static bool IsZoneFound(Dictionary<Uri, BlockList> listZones, string domain, out string? foundZone, out Uri? listUri)
+         {
+             foreach (KeyValuePair<Uri, BlockList> listZone in listZones)
+@@ -1134,6 +1152,286 @@ namespace AdvancedBlocking
+             #endregion
+         }
+ 
++        //exact set of domains as the parser stores them (the plain block list lowercases; the
++        //adblock parser does not). Add() only before Sort(); Contains() only after. Names over
++        //255 characters or 255 UTF-8 bytes are not stored: both parsers reject them through
++        //IsDomainNameValid, so no entry is lost.
++        sealed class DomainSet
++        {
++            #region variables
++
++            const int FilterHashCount = 7;
++            const int BlockSize = 16;
++
++            byte[] _buffer;
++            int _length;
++            int[] _offsets;
++            int _count;
++            int _sortedCount;
++            bool _sorted;
++            ulong[]? _filter;
++            int _filterMask;
++
++            #endregion
++
++            #region constructor
++
++            public DomainSet(int capacity)
++            {
++                if (capacity < 1024)
++                    capacity = 1024;
++
++                _buffer = new byte[capacity];
++                _offsets = new int[Math.Max(16, capacity / 16)];
++            }
++
++            #endregion
++
++            #region private
++
++            private int CompareEntry(int a, int b)
++            {
++                return _buffer.AsSpan(a + 1, _buffer[a]).SequenceCompareTo(_buffer.AsSpan(b + 1, _buffer[b]));
++            }
++
++            private int CompareEntryToSpan(int a, ReadOnlySpan<byte> value)
++            {
++                return _buffer.AsSpan(a + 1, _buffer[a]).SequenceCompareTo(value);
++            }
++
++            private int GetSharedLength(int a, int b)
++            {
++                return _buffer.AsSpan(a + 1, _buffer[a]).CommonPrefixLength(_buffer.AsSpan(b + 1, _buffer[b]));
++            }
++
++            //sorted neighbours share long prefixes: the first entry of every block is stored whole and
++            //the others as (shared prefix length, suffix length, suffix). _offsets then holds the
++            //offsets of the blocks instead of those of the entries.
++            private void Compress()
++            {
++                int[] blocks = new int[(_sortedCount + BlockSize - 1) / BlockSize];
++                int size = 0;
++
++                for (int i = 0; i < _sortedCount; i++)
++                {
++                    int length = _buffer[_offsets[i]];
++
++                    if ((i % BlockSize) == 0)
++                    {
++                        blocks[i / BlockSize] = size;
++                        size += 1 + length;
++                    }
++                    else
++                    {
++                        size += 2 + length - GetSharedLength(_offsets[i - 1], _offsets[i]);
++                    }
++                }
++
++                byte[] blob = new byte[size];
++                int position = 0;
++
++                for (int i = 0; i < _sortedCount; i++)
++                {
++                    int offset = _offsets[i];
++                    int length = _buffer[offset];
++                    int shared = 0;
++
++                    if ((i % BlockSize) != 0)
++                    {
++                        shared = GetSharedLength(_offsets[i - 1], offset);
++                        blob[position++] = (byte)shared;
++                    }
++
++                    blob[position++] = (byte)(length - shared);
++                    _buffer.AsSpan(offset + 1 + shared, length - shared).CopyTo(blob.AsSpan(position));
++                    position += length - shared;
++                }
++
++                _buffer = blob;
++                _length = size;
++                _offsets = blocks;
++            }
++
++            private static (uint h1, uint h2) GetFilterHashes(ReadOnlySpan<byte> value)
++            {
++                uint h1 = 2166136261u;
++                uint h2 = 0x9e3779b9u;
++
++                foreach (byte b in value)
++                {
++                    h1 = (h1 ^ b) * 16777619u;
++                    h2 = (h2 ^ b) * 2246822519u;
++                }
++
++                return (h1, h2 | 1);
++            }
++
++            private void AddToFilter(ReadOnlySpan<byte> value)
++            {
++                (uint h1, uint h2) = GetFilterHashes(value);
++
++                for (int i = 0; i < FilterHashCount; i++)
++                {
++                    uint bit = (h1 + ((uint)i * h2)) & (uint)_filterMask;
++                    _filter![bit >> 6] |= 1UL << (int)(bit & 63);
++                }
++            }
++
++            private bool MayContain(ReadOnlySpan<byte> value)
++            {
++                (uint h1, uint h2) = GetFilterHashes(value);
++
++                for (int i = 0; i < FilterHashCount; i++)
++                {
++                    uint bit = (h1 + ((uint)i * h2)) & (uint)_filterMask;
++
++                    if ((_filter![bit >> 6] & (1UL << (int)(bit & 63))) == 0)
++                        return false;
++                }
++
++                return true;
++            }
++
++            #endregion
++
++            #region public
++
++            public void Add(string domain)
++            {
++                if (_sorted)
++                    throw new InvalidOperationException("Add() must be called before Sort().");
++
++                if (domain.Length > 255)
++                    return; //invalid domain name
++
++                Span<byte> value = stackalloc byte[255];
++                if (!Encoding.UTF8.TryGetBytes(domain, value, out int valueLength))
++                    return; //invalid domain name
++
++                if (_length + valueLength + 1 > _buffer.Length)
++                    Array.Resize(ref _buffer, Math.Max(_buffer.Length * 2, _length + valueLength + 1));
++
++                if (_count == _offsets.Length)
++                    Array.Resize(ref _offsets, _offsets.Length * 2);
++
++                _buffer[_length] = (byte)valueLength;
++                value.Slice(0, valueLength).CopyTo(_buffer.AsSpan(_length + 1));
++                _offsets[_count++] = _length;
++                _length += valueLength + 1;
++            }
++
++            public void Sort()
++            {
++                Array.Sort(_offsets, 0, _count, Comparer<int>.Create(CompareEntry));
++
++                //compact duplicates in place; RawCount stays the parser's raw count.
++                int uniqueCount = 0;
++                for (int i = 0; i < _count; i++)
++                {
++                    if ((uniqueCount == 0) || (CompareEntry(_offsets[i], _offsets[uniqueCount - 1]) != 0))
++                        _offsets[uniqueCount++] = _offsets[i];
++                }
++
++                _sortedCount = uniqueCount;
++
++                //the raw buffer and offsets keep the capacity reserved from the file length, an upper bound of
++                //what the parser stores. Compress() copies the entries once into blocks of the exact size and
++                //the raw arrays are dropped; the previous set stays alive meanwhile, as it did before.
++
++                if (_sortedCount > 0)
++                {
++                    int bits = 64;
++                    long wanted = (long)_sortedCount * 10;
++                    while ((bits < wanted) && (bits < (1 << 30)))
++                        bits <<= 1;
++
++                    _filter = new ulong[bits >> 6];
++                    _filterMask = bits - 1;
++
++                    for (int i = 0; i < _sortedCount; i++)
++                    {
++                        int offset = _offsets[i];
++                        AddToFilter(_buffer.AsSpan(offset + 1, _buffer[offset]));
++                    }
++
++                    Compress();
++                }
++
++                _sorted = true;
++            }
++
++            public bool Contains(string domain)
++            {
++                if (domain.Length > 255)
++                    return false; //invalid domain name
++
++                if (_count == 0)
++                    return false;
++
++                if (!_sorted)
++                    throw new InvalidOperationException("Contains() before Sort()");
++
++                Span<byte> value = stackalloc byte[255];
++                if (!Encoding.UTF8.TryGetBytes(domain, value, out int valueLength))
++                    return false; //invalid domain name
++
++                ReadOnlySpan<byte> valueSpan = value.Slice(0, valueLength);
++
++                if ((_filter is not null) && !MayContain(valueSpan))
++                    return false;
++
++                //last block whose first entry is not above the value, then the entries of the block in order
++                int low = 0;
++                int high = _offsets.Length - 1;
++
++                while (low < high)
++                {
++                    int mid = low + ((high - low + 1) >> 1);
++                    int first = _offsets[mid];
++
++                    if (_buffer.AsSpan(first + 1, _buffer[first]).SequenceCompareTo(valueSpan) <= 0)
++                        low = mid;
++                    else
++                        high = mid - 1;
++                }
++
++                int position = _offsets[low];
++                int end = (low + 1 < _offsets.Length) ? _offsets[low + 1] : _length;
++
++                Span<byte> current = stackalloc byte[255];
++                int currentLength = _buffer[position];
++                _buffer.AsSpan(position + 1, currentLength).CopyTo(current);
++                position += 1 + currentLength;
++
++                while (true)
++                {
++                    int result = current.Slice(0, currentLength).SequenceCompareTo(valueSpan);
++
++                    if (result == 0)
++                        return true;
++
++                    if ((result > 0) || (position >= end))
++                        return false;
++
++                    int shared = _buffer[position];
++                    int suffixLength = _buffer[position + 1];
++
++                    _buffer.AsSpan(position + 2, suffixLength).CopyTo(current.Slice(shared));
++                    currentLength = shared + suffixLength;
++                    position += 2 + suffixLength;
++                }
++            }
++
++            #endregion
++
++            #region properties
++
++            public int RawCount
++            { get { return _count; } }
++
++            #endregion
++        }
++
+         abstract class ListBase
+         {
+             #region variables
+@@ -1257,6 +1555,22 @@ namespace AdvancedBlocking
+ 
+             #region protected
+ 
++            protected int GetCapacity()
++            {
++                try
++                {
++                    long fileLength = new FileInfo(_listFilePath).Length;
++                    if (fileLength > 1024)
++                        return (int)Math.Min(fileLength + 1, Array.MaxLength);
++                }
++                catch (Exception)
++                {
++                    //fall back to the default capacity
++                }
++
++                return 1024;
++            }
++
+             protected abstract void LoadListZone();
+ 
+             #endregion
+@@ -1334,7 +1648,7 @@ namespace AdvancedBlocking
+ 
+             readonly static char[] _popWordSeperator = new char[] { ' ', '\t' };
+ 
+-            HashSet<string> _listZone = [];
++            DomainSet _listZone = new(1024);
+ 
+             #endregion
+ 
+@@ -1372,9 +1686,9 @@ namespace AdvancedBlocking
+                 return word;
+             }
+ 
+-            private Queue<string> ReadListFile()
++            private DomainSet ReadListFile()
+             {
+-                Queue<string> domains = new Queue<string>();
++                DomainSet domains = new DomainSet(GetCapacity());
+ 
+                 try
+                 {
+@@ -1452,11 +1766,11 @@ namespace AdvancedBlocking
+                             if (IPAddress.TryParse(hostname, out _))
+                                 continue; //skip line when hostname is IP address
+ 
+-                            domains.Enqueue(hostname);
++                            domains.Add(hostname);
+                         }
+                     }
+ 
+-                    _dnsServer.WriteLog("Advanced Blocking app read " + (_isAllowList ? "allow" : "block") + " list file (" + domains.Count + " domains) from: " + _listUrl.AbsoluteUri);
++                    _dnsServer.WriteLog("Advanced Blocking app read " + (_isAllowList ? "allow" : "block") + " list file (" + domains.RawCount + " domains) from: " + _listUrl.AbsoluteUri);
+                 }
+                 catch (Exception ex)
+                 {
+@@ -1472,13 +1786,12 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                Queue<string> listQueue = ReadListFile();
+-                HashSet<string> listZone = new HashSet<string>(listQueue.Count);
+-
+-                while (listQueue.Count > 0)
+-                    listZone.Add(listQueue.Dequeue());
++                DomainSet listZone = ReadListFile();
++                listZone.Sort();
+ 
+                 _listZone = listZone;
++                System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
++                GC.Collect();
+             }
+ 
+             #endregion
+@@ -1594,8 +1907,8 @@ namespace AdvancedBlocking
+         {
+             #region variables
+ 
+-            HashSet<string> _allowedListZone = [];
+-            HashSet<string> _blockedListZone = [];
++            DomainSet _allowedListZone = new(1024);
++            DomainSet _blockedListZone = new(1024);
+ 
+             #endregion
+ 
+@@ -1609,10 +1922,10 @@ namespace AdvancedBlocking
+ 
+             #region private
+ 
+-            private void ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains)
++            private void ReadAdblockListFile(out DomainSet allowedDomains, out DomainSet blockedDomains)
+             {
+-                allowedDomains = new Queue<string>();
+-                blockedDomains = new Queue<string>();
++                allowedDomains = new DomainSet(1024);
++                blockedDomains = new DomainSet(GetCapacity());
+ 
+                 try
+                 {
+@@ -1648,14 +1961,14 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(domain);
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(2);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(domain);
+                                 }
+                             }
+                             else if (line.StartsWith("@@||", StringComparison.Ordinal))
+@@ -1667,20 +1980,20 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(domain);
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(4);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(domain);
+                                 }
+                             }
+                         }
+                     }
+ 
+-                    _dnsServer.WriteLog("Advanced Blocking app read adblock list file (" + (allowedDomains.Count + blockedDomains.Count) + " domains) from: " + _listUrl.AbsoluteUri);
++                    _dnsServer.WriteLog("Advanced Blocking app read adblock list file (" + (allowedDomains.RawCount + blockedDomains.RawCount) + " domains) from: " + _listUrl.AbsoluteUri);
+                 }
+                 catch (Exception ex)
+                 {
+@@ -1694,19 +2007,15 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains);
++                ReadAdblockListFile(out DomainSet allowedListZone, out DomainSet blockedListZone);
+ 
+-                HashSet<string> allowedListZone = new HashSet<string>(allowedDomains.Count);
+-                HashSet<string> blockedListZone = new HashSet<string>(blockedDomains.Count);
+-
+-                while (allowedDomains.Count > 0)
+-                    allowedListZone.Add(allowedDomains.Dequeue());
+-
+-                while (blockedDomains.Count > 0)
+-                    blockedListZone.Add(blockedDomains.Dequeue());
++                allowedListZone.Sort();
++                blockedListZone.Sort();
+ 
+                 _allowedListZone = allowedListZone;
+                 _blockedListZone = blockedListZone;
++                System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
++                GC.Collect();
+             }
+ 
+             #endregion

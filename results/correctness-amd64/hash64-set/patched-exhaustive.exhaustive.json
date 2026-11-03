@@ -1,0 +1,136 @@
+{
+  "variant": "patched",
+  "run_tag": "-exhaustive",
+  "limit": 0,
+  "domains": 2292180,
+  "answers": 2292180,
+  "blocked": 2292180,
+  "unblocked": 0,
+  "unblocked_answers": [],
+  "errors": 0,
+  "retried": 0,
+  "retried_domains": [],
+  "failures": [],
+  "digest": "81817805df6f35cd",
+  "txt_mode": "full",
+  "txt_answers": 2292180,
+  "txt_blocked": 2292180,
+  "txt_unblocked": 0,
+  "txt_unblocked_answers": [],
+  "txt_errors": 0,
+  "txt_retried": 0,
+  "txt_retried_domains": [],
+  "txt_failures": [],
+  "txt_digest": "484d84857aa6767b",
+  "workers": 8,
+  "elapsed_s": 202.595,
+  "txt_elapsed_s": 234.737,
+  "allow_covered": 175,
+  "allow_answers": 175,
+  "allow_reported": 0,
+  "allow_errors": 0,
+  "allow_retried": 0,
+  "allow_digest": "191737ebd76058b9",
+  "allow_rcodes": {
+    "2": 175
+  },
+  "allow_elapsed_s": 44.369,
+  "list_counts": [
+    [
+      1541,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/dyndns.txt"
+    ],
+    [
+      17687,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/fake.txt"
+    ],
+    [
+      368,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.amazon.txt"
+    ],
+    [
+      110,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.apple.txt"
+    ],
+    [
+      135,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.huawei.txt"
+    ],
+    [
+      231,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.lgwebos.txt"
+    ],
+    [
+      489,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.oppo-realme.txt"
+    ],
+    [
+      57,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.roku.txt"
+    ],
+    [
+      201,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.samsung.txt"
+    ],
+    [
+      764,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.tiktok.extended.txt"
+    ],
+    [
+      550,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.tiktok.txt"
+    ],
+    [
+      244,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.vivo.txt"
+    ],
+    [
+      383,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.winoffice.txt"
+    ],
+    [
+      350,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.xiaomi.txt"
+    ],
+    [
+      91536,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/nsfw.txt"
+    ],
+    [
+      54074,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/popupads.txt"
+    ],
+    [
+      224723,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.plus.txt"
+    ],
+    [
+      211042,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt"
+    ],
+    [
+      445,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/spam-tlds-adblock-aggressive.txt"
+    ],
+    [
+      0,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/spam-tlds-adblock-allow.txt"
+    ],
+    [
+      127,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/spam-tlds-adblock.txt"
+    ],
+    [
+      2065646,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/tif.txt"
+    ],
+    [
+      1044,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/spam-tlds-allow-onlydomains.txt"
+    ]
+  ],
+  "app_sha256": "461bcd0b79bf5f3c115a5dd5347ac53675f8bc017427ed3bcb2a43cf1d93aa00",
+  "image": "technitium/dns-server:15.6.2",
+  "memory_limit": "none",
+  "memory_swap": "none"
+}

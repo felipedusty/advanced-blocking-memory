@@ -1,0 +1,20 @@
+{
+  "variant": "original",
+  "run_tag": "-e-run1",
+  "image": "technitium/dns-server:15.6.2",
+  "memory_limit": "none",
+  "memory_swap": "none",
+  "grace_s": 20,
+  "app_sha256": "1558d3d917b7ddb4cf265bc21a206eb4cd6cb887075374a59a1dbeb3c9b895cd",
+  "lists_expected": 23,
+  "lists_parsed": 23,
+  "peak_bytes": 326656000,
+  "peak_at_ms": 26263,
+  "cgroup_memory_peak_bytes": 330858496,
+  "steady_median_bytes": 324710400,
+  "final_bytes": 323723264,
+  "anon_bytes": 271024128,
+  "file_bytes": 49205248,
+  "all_lists_parsed_at_ms": 14564,
+  "window_ms": 34610
+}

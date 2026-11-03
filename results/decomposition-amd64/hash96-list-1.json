@@ -1,0 +1,20 @@
+{
+  "variant": "patched",
+  "run_tag": "-dhash96-list1",
+  "image": "technitium/dns-server:15.6.2",
+  "memory_limit": "none",
+  "memory_swap": "none",
+  "grace_s": 20,
+  "app_sha256": "6ec29165c0e067943af77cabd3ee6eedfb48dc78adee593869fcfcac7c1f9d21",
+  "lists_expected": 23,
+  "lists_parsed": 23,
+  "peak_bytes": 80625664,
+  "peak_at_ms": 20856,
+  "cgroup_memory_peak_bytes": 82468864,
+  "steady_median_bytes": 80113664,
+  "final_bytes": 80621568,
+  "anon_bytes": 61501440,
+  "file_bytes": 14258176,
+  "all_lists_parsed_at_ms": 1016,
+  "window_ms": 21023
+}

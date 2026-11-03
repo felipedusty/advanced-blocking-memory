@@ -1,0 +1,14 @@
+{
+  "variant": "original",
+  "run_tag": "-run3",
+  "app_sha256": "1558d3d917b7ddb4cf265bc21a206eb4cd6cb887075374a59a1dbeb3c9b895cd",
+  "queries": 50000,
+  "errors": 0,
+  "warmup_errors": 0,
+  "elapsed_s": 13.946,
+  "qps": 3585.3,
+  "p50_us": 203.0,
+  "p95_us": 435.5,
+  "p99_us": 813.9,
+  "mean_us": 252.4
+}

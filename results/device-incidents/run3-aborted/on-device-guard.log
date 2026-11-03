@@ -1,0 +1,3 @@
+2026-11-03T12:29:05Z guard start: swap in use 187 MiB, trip at MemAvailable < 100 MiB, swap growth > 300 MiB or swap traffic > 6000 pages/s
+2026-11-03T12:38:15Z GUARD TRIPPED avail=187 MiB swap=489 MiB (base 187) swap_pages_s=0: removing dns-lab
+2026-11-03T12:45:30Z GUARD TRIPPED avail=177 MiB swap=498 MiB (base 187) swap_pages_s=0: removing dns-lab

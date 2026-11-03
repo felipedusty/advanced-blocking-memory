@@ -1,0 +1,26 @@
+variant: patched (64-bit key)
+app_sha256: 461bcd0b79bf5f3c115a5dd5347ac53675f8bc017427ed3bcb2a43cf1d93aa00
+
+An issue was encountered verifying workloads. For more information, run "dotnet workload update".
+/test/Program.cs(69,13): warning CS0219: The variable 'Golden' is assigned but its value is never used [/test/hash-test.csproj]
+basis=39eeb76bffe8be9d
+ok: reference: the empty string hashes to the standard basis
+ok: reference: 'a' is the published FNV-1a-64 vector
+ok: reference: 'foobar' is the published FNV-1a-64 vector
+ok: reference: 'hello world' is the vector of the fnv1a-64 package
+ok: the basis is odd and is not the published constant
+ok: GetDomainHash equals the reference from its basis on 20,140 names (empty, 255 and 1000 characters, non-ASCII, every ASCII character)
+ok: the empty name hashes to the basis
+ok: the hash is case sensitive, like the ordinal HashSet<string>
+ok: non-ASCII names hash apart
+ok: no collision among 200,000 distinct random names
+ok: a subdomain is found through its parent, with the parent as the found zone
+ok: other names and the parent of a listed name are not found
+ok: a listed top-level name matches itself and its subdomains
+ok: membership is ordinal, so case is significant
+ok: an empty set finds nothing
+ok: the empty name is found when it is listed
+ok: 255-character names are handled
+ok: differential against HashSet<string> through IsZoneFound: 113,062 probes (105,934 found, 7,128 not found), found zone included, 0 mismatches
+all hash checks passed
+ok: the basis changes with the process (39eeb76bffe8be9d then f3c491ec323aa6ef)

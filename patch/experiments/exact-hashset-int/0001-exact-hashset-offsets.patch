@@ -1,0 +1,326 @@
+diff --git a/Apps/AdvancedBlockingApp/App.cs b/Apps/AdvancedBlockingApp/App.cs
+index 97e13a4..3fb1a5b 100644
+--- a/Apps/AdvancedBlockingApp/App.cs
++++ b/Apps/AdvancedBlockingApp/App.cs
+@@ -168,6 +168,24 @@ namespace AdvancedBlocking
+             return false;
+         }
+ 
++        private static bool IsZoneFound(DomainSet domains, string domain, out string? foundZone)
++        {
++            do
++            {
++                if (domains.Contains(domain))
++                {
++                    foundZone = domain;
++                    return true;
++                }
++
++                domain = GetParentZone(domain)!;
++            }
++            while (domain is not null);
++
++            foundZone = null;
++            return false;
++        }
++
+         private static bool IsZoneFound(Dictionary<Uri, BlockList> listZones, string domain, out string? foundZone, out Uri? listUri)
+         {
+             foreach (KeyValuePair<Uri, BlockList> listZone in listZones)
+@@ -1134,6 +1152,138 @@ namespace AdvancedBlocking
+             #endregion
+         }
+ 
++        //exact set of domains as the parser stores them (the plain block list lowercases; the
++        //adblock parser does not). The names are UTF-8 bytes in one buffer, each prefixed by its
++        //length, and a HashSet<int> holds their offsets, so a name costs its bytes plus 16 bytes
++        //instead of a string object and a set entry. Add() only before Sort(); Contains() only
++        //after. Names over 255 characters or 255 UTF-8 bytes are not stored: both parsers reject
++        //them through IsDomainNameValid, so no entry is lost.
++        sealed class DomainSet : IEqualityComparer<int>, IAlternateEqualityComparer<ReadOnlySpan<byte>, int>
++        {
++            #region variables
++
++            byte[] _buffer;
++            int _length;
++            int _count;
++            int _sortedCount;
++            HashSet<int>? _set;
++            HashSet<int>.AlternateLookup<ReadOnlySpan<byte>> _lookup;
++
++            #endregion
++
++            #region constructor
++
++            public DomainSet(int capacity)
++            {
++                _buffer = new byte[Math.Max(capacity, 1024)];
++            }
++
++            #endregion
++
++            #region private
++
++            private ReadOnlySpan<byte> GetName(int offset)
++            {
++                return _buffer.AsSpan(offset + 1, _buffer[offset]);
++            }
++
++            private static int GetHash(ReadOnlySpan<byte> name)
++            {
++                HashCode hash = new HashCode();
++                hash.AddBytes(name);
++                return hash.ToHashCode();
++            }
++
++            bool IEqualityComparer<int>.Equals(int x, int y)
++            {
++                return GetName(x).SequenceEqual(GetName(y));
++            }
++
++            int IEqualityComparer<int>.GetHashCode(int offset)
++            {
++                return GetHash(GetName(offset));
++            }
++
++            bool IAlternateEqualityComparer<ReadOnlySpan<byte>, int>.Equals(ReadOnlySpan<byte> alternate, int offset)
++            {
++                return alternate.SequenceEqual(GetName(offset));
++            }
++
++            int IAlternateEqualityComparer<ReadOnlySpan<byte>, int>.GetHashCode(ReadOnlySpan<byte> alternate)
++            {
++                return GetHash(alternate);
++            }
++
++            int IAlternateEqualityComparer<ReadOnlySpan<byte>, int>.Create(ReadOnlySpan<byte> alternate)
++            {
++                throw new NotSupportedException();
++            }
++
++            #endregion
++
++            #region public
++
++            public void Add(string domain)
++            {
++                if (_set is not null)
++                    throw new InvalidOperationException("Add() must be called before Sort().");
++
++                if (domain.Length > 255)
++                    return; //invalid domain name
++
++                Span<byte> name = stackalloc byte[255];
++                if (!Encoding.UTF8.TryGetBytes(domain, name, out int nameLength))
++                    return; //invalid domain name
++
++                if (_length + nameLength + 1 > _buffer.Length)
++                    Array.Resize(ref _buffer, Math.Max(_buffer.Length * 2, _length + nameLength + 1));
++
++                _buffer[_length] = (byte)nameLength;
++                name.Slice(0, nameLength).CopyTo(_buffer.AsSpan(_length + 1));
++                _length += nameLength + 1;
++                _count++;
++            }
++
++            public void Sort()
++            {
++                HashSet<int> set = new HashSet<int>(_count, this);
++
++                for (int offset = 0; offset < _length; offset += _buffer[offset] + 1)
++                    set.Add(offset);
++
++                _sortedCount = set.Count;
++                _lookup = set.GetAlternateLookup<ReadOnlySpan<byte>>();
++                _set = set;
++            }
++
++            public bool Contains(string domain)
++            {
++                if (domain.Length > 255)
++                    return false; //invalid domain name
++
++                if (_count == 0)
++                    return false;
++
++                if (_set is null)
++                    throw new InvalidOperationException("Contains() before Sort()");
++
++                Span<byte> name = stackalloc byte[255];
++                if (!Encoding.UTF8.TryGetBytes(domain, name, out int nameLength))
++                    return false; //invalid domain name
++
++                return _lookup.Contains(name.Slice(0, nameLength));
++            }
++
++            #endregion
++
++            #region properties
++
++            public int RawCount
++            { get { return _count; } }
++
++            #endregion
++        }
++
+         abstract class ListBase
+         {
+             #region variables
+@@ -1257,6 +1407,22 @@ namespace AdvancedBlocking
+ 
+             #region protected
+ 
++            protected int GetCapacity()
++            {
++                try
++                {
++                    long fileLength = new FileInfo(_listFilePath).Length;
++                    if (fileLength > 1024)
++                        return (int)Math.Min(fileLength + 1, Array.MaxLength);
++                }
++                catch (Exception)
++                {
++                    //fall back to the default capacity
++                }
++
++                return 1024;
++            }
++
+             protected abstract void LoadListZone();
+ 
+             #endregion
+@@ -1334,7 +1500,7 @@ namespace AdvancedBlocking
+ 
+             readonly static char[] _popWordSeperator = new char[] { ' ', '\t' };
+ 
+-            HashSet<string> _listZone = [];
++            DomainSet _listZone = new(1024);
+ 
+             #endregion
+ 
+@@ -1372,9 +1538,9 @@ namespace AdvancedBlocking
+                 return word;
+             }
+ 
+-            private Queue<string> ReadListFile()
++            private DomainSet ReadListFile()
+             {
+-                Queue<string> domains = new Queue<string>();
++                DomainSet domains = new DomainSet(GetCapacity());
+ 
+                 try
+                 {
+@@ -1452,11 +1618,11 @@ namespace AdvancedBlocking
+                             if (IPAddress.TryParse(hostname, out _))
+                                 continue; //skip line when hostname is IP address
+ 
+-                            domains.Enqueue(hostname);
++                            domains.Add(hostname);
+                         }
+                     }
+ 
+-                    _dnsServer.WriteLog("Advanced Blocking app read " + (_isAllowList ? "allow" : "block") + " list file (" + domains.Count + " domains) from: " + _listUrl.AbsoluteUri);
++                    _dnsServer.WriteLog("Advanced Blocking app read " + (_isAllowList ? "allow" : "block") + " list file (" + domains.RawCount + " domains) from: " + _listUrl.AbsoluteUri);
+                 }
+                 catch (Exception ex)
+                 {
+@@ -1472,11 +1638,8 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                Queue<string> listQueue = ReadListFile();
+-                HashSet<string> listZone = new HashSet<string>(listQueue.Count);
+-
+-                while (listQueue.Count > 0)
+-                    listZone.Add(listQueue.Dequeue());
++                DomainSet listZone = ReadListFile();
++                listZone.Sort();
+ 
+                 _listZone = listZone;
+             }
+@@ -1594,8 +1757,8 @@ namespace AdvancedBlocking
+         {
+             #region variables
+ 
+-            HashSet<string> _allowedListZone = [];
+-            HashSet<string> _blockedListZone = [];
++            DomainSet _allowedListZone = new(1024);
++            DomainSet _blockedListZone = new(1024);
+ 
+             #endregion
+ 
+@@ -1609,10 +1772,10 @@ namespace AdvancedBlocking
+ 
+             #region private
+ 
+-            private void ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains)
++            private void ReadAdblockListFile(out DomainSet allowedDomains, out DomainSet blockedDomains)
+             {
+-                allowedDomains = new Queue<string>();
+-                blockedDomains = new Queue<string>();
++                allowedDomains = new DomainSet(1024);
++                blockedDomains = new DomainSet(GetCapacity());
+ 
+                 try
+                 {
+@@ -1648,14 +1811,14 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(domain);
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(2);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(domain);
+                                 }
+                             }
+                             else if (line.StartsWith("@@||", StringComparison.Ordinal))
+@@ -1667,20 +1830,20 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(domain);
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(4);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(domain);
+                                 }
+                             }
+                         }
+                     }
+ 
+-                    _dnsServer.WriteLog("Advanced Blocking app read adblock list file (" + (allowedDomains.Count + blockedDomains.Count) + " domains) from: " + _listUrl.AbsoluteUri);
++                    _dnsServer.WriteLog("Advanced Blocking app read adblock list file (" + (allowedDomains.RawCount + blockedDomains.RawCount) + " domains) from: " + _listUrl.AbsoluteUri);
+                 }
+                 catch (Exception ex)
+                 {
+@@ -1694,16 +1857,10 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains);
++                ReadAdblockListFile(out DomainSet allowedListZone, out DomainSet blockedListZone);
+ 
+-                HashSet<string> allowedListZone = new HashSet<string>(allowedDomains.Count);
+-                HashSet<string> blockedListZone = new HashSet<string>(blockedDomains.Count);
+-
+-                while (allowedDomains.Count > 0)
+-                    allowedListZone.Add(allowedDomains.Dequeue());
+-
+-                while (blockedDomains.Count > 0)
+-                    blockedListZone.Add(blockedDomains.Dequeue());
++                allowedListZone.Sort();
++                blockedListZone.Sort();
+ 
+                 _allowedListZone = allowedListZone;
+                 _blockedListZone = blockedListZone;

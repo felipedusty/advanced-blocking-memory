@@ -1,0 +1,15 @@
+variant: hash64-index2
+app_sha256: 11d2e11fb33a5e0216217ea0638bfc4ee3a781633fd497bb7d265e8a95e9ddac
+
+An issue was encountered verifying workloads. For more information, run "dotnet workload update".
+ok: an empty index contains nothing, including 0 and ulong.MaxValue
+ok: a one-entry index finds only the entry, not its neighbours or the extremes
+ok: 0 and ulong.MaxValue (first and last bucket) are stored and found, and nothing next to them
+ok: repeated values behave like one value
+ok: 95 sizes around every power of two where the number of index bits changes, random hashes: 0 mismatches
+ok: 5,000 hashes that all fall in the first bucket (a long slice searched by binary search): 0 mismatches
+ok: 106350 hashes including the first and last value of 4,000 buckets (shift 50): 0 mismatches over every member, neighbour and random probe
+ok: differential against HashSet<ulong>, 63330 hashes in 50 dense clusters: 0 mismatches
+ok: differential against HashSet<ulong>, 126477 hashes in 5 dense clusters: 0 mismatches
+ok: differential against HashSet<ulong>, 200,000 random hashes: 0 mismatches
+all HashIndex boundary checks passed

@@ -1,0 +1,20 @@
+{
+  "variant": "original",
+  "run_tag": "-dno-lists2",
+  "image": "technitium/dns-server:15.6.2",
+  "memory_limit": "none",
+  "memory_swap": "none",
+  "grace_s": 20,
+  "app_sha256": "1558d3d917b7ddb4cf265bc21a206eb4cd6cb887075374a59a1dbeb3c9b895cd",
+  "lists_expected": 0,
+  "lists_parsed": 0,
+  "peak_bytes": 41119744,
+  "peak_at_ms": 20780,
+  "cgroup_memory_peak_bytes": 42979328,
+  "steady_median_bytes": 40816640,
+  "final_bytes": 41119744,
+  "anon_bytes": 22388736,
+  "file_bytes": 14082048,
+  "all_lists_parsed_at_ms": 1012,
+  "window_ms": 21060
+}

@@ -1,0 +1,8 @@
+hash64-index2 MEM=128m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=96m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=80m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=72m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=64m start: names of the biggest list blocked 0 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=192m reload: completed, cgroup peak 150.8 MiB
+hash64-index2 MEM=160m reload: completed, cgroup peak 146.2 MiB
+hash64-index2 MEM=128m reload: completed, cgroup peak 128.0 MiB

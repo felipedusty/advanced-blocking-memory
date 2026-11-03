@@ -1,0 +1,66 @@
+=== hash64-set 2026-11-03T13:33:12Z
+exhaustive IDENTICAL
+  answers            original=2292180 patched=2292180
+  blocked            original=2292180 patched=2292180
+  digest             original=81817805df6f35cd patched=81817805df6f35cd
+  txt_blocked        original=2292180 patched=2292180
+  txt_digest         original=484d84857aa6767b patched=484d84857aa6767b
+  allow_digest       original=191737ebd76058b9 patched=191737ebd76058b9
+near-miss IDENTICAL
+  names              original=240574 patched=240574
+  answers            original=240574 patched=240574
+  blocked            original=58883 patched=58883
+  digest             original=79962225265bc64e patched=79962225265bc64e
+hosts-format IDENTICAL
+  answers            original=601786 patched=601786
+  blocked            original=601786 patched=601786
+  digest             original=5c7dd8b2a0940e60 patched=5c7dd8b2a0940e60
+  txt_blocked        original=601786 patched=601786
+  txt_digest         original=ee373fac9d6210df patched=ee373fac9d6210df
+  allow_digest       original=191737ebd76058b9 patched=191737ebd76058b9
+edge IDENTICAL
+exit 0 2026-11-03T14:04:03Z
+=== hash64-index2 2026-11-03T14:04:03Z
+exhaustive IDENTICAL
+  answers            original=2292180 patched=2292180
+  blocked            original=2292180 patched=2292180
+  digest             original=81817805df6f35cd patched=81817805df6f35cd
+  txt_blocked        original=2292180 patched=2292180
+  txt_digest         original=484d84857aa6767b patched=484d84857aa6767b
+  allow_digest       original=191737ebd76058b9 patched=191737ebd76058b9
+near-miss IDENTICAL
+  names              original=240574 patched=240574
+  answers            original=240574 patched=240574
+  blocked            original=58883 patched=58883
+  digest             original=79962225265bc64e patched=79962225265bc64e
+hosts-format IDENTICAL
+  answers            original=601786 patched=601786
+  blocked            original=601786 patched=601786
+  digest             original=5c7dd8b2a0940e60 patched=5c7dd8b2a0940e60
+  txt_blocked        original=601786 patched=601786
+  txt_digest         original=ee373fac9d6210df patched=ee373fac9d6210df
+  allow_digest       original=191737ebd76058b9 patched=191737ebd76058b9
+edge IDENTICAL
+exit 0 2026-11-03T14:34:31Z
+=== exact-tags 2026-11-03T14:34:31Z
+exhaustive IDENTICAL
+  answers            original=2292180 patched=2292180
+  blocked            original=2292180 patched=2292180
+  digest             original=81817805df6f35cd patched=81817805df6f35cd
+  txt_blocked        original=2292180 patched=2292180
+  txt_digest         original=484d84857aa6767b patched=484d84857aa6767b
+  allow_digest       original=191737ebd76058b9 patched=191737ebd76058b9
+near-miss IDENTICAL
+  names              original=240574 patched=240574
+  answers            original=240574 patched=240574
+  blocked            original=58883 patched=58883
+  digest             original=79962225265bc64e patched=79962225265bc64e
+hosts-format IDENTICAL
+  answers            original=601786 patched=601786
+  blocked            original=601786 patched=601786
+  digest             original=5c7dd8b2a0940e60 patched=5c7dd8b2a0940e60
+  txt_blocked        original=601786 patched=601786
+  txt_digest         original=ee373fac9d6210df patched=ee373fac9d6210df
+  allow_digest       original=191737ebd76058b9 patched=191737ebd76058b9
+edge IDENTICAL
+exit 0 2026-11-03T15:05:11Z

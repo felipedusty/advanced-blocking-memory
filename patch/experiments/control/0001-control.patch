@@ -1,0 +1,14 @@
+diff --git a/Apps/AdvancedBlockingApp/App.cs b/Apps/AdvancedBlockingApp/App.cs
+index 97e13a4..00d7a58 100644
+--- a/Apps/AdvancedBlockingApp/App.cs
++++ b/Apps/AdvancedBlockingApp/App.cs
+@@ -150,6 +150,9 @@ namespace AdvancedBlocking
+             return null;
+         }
+ 
++        //control build for the lab: an unused constant changes the assembly and nothing else
++        private const int ControlMarker = 1;
++
+         private static bool IsZoneFound(HashSet<string> domains, string domain, out string? foundZone)
+         {
+             do

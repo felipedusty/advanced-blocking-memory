@@ -1,0 +1,32 @@
+2026-11-03T12:46:50Z host: aarch64 969 MiB, 4 cores, kernel 6.18.45-current-sunxi64
+2026-11-03T12:46:50Z dns-server and technitium-dns-watchdog.timer stopped; MemAvailable 621 MiB
+2026-11-03T12:46:50Z == original (start)
+done start
+2026-11-03T12:51:36Z == hash64-set
+== hash64-set (cand/h64set)
+461bcd0b79bf5f3c
+reports: identical to hash64-set (the original was not queried)
+done cand
+2026-11-03T13:05:58Z == hash64-index2
+== hash64-index2 (cand/h64index2)
+11d2e11fb33a5e02
+reports: identical to hash64-set (the original was not queried)
+done cand
+2026-11-03T13:20:13Z == exact-tags
+== exact-tags (cand/extags)
+8233b3683cecfbb3
+reports: identical to hash64-set (the original was not queried)
+done cand
+2026-11-03T13:34:30Z == original (end)
+done end
+original, start of session : startup 292.2  anon 262.1  reload 468.8 MiB
+original, end of session   : startup 297.4  anon 259.1  reload 434.8 MiB
+reference original         : startup 294.8  anon 260.6  reload 451.8 MiB
+
+| candidate | lines + / - | startup peak | steady anon | reload peak | anon ratio | startup ratio | reload ratio | p50 (paired) | qps (paired) | 500 reports |
+|---|---|---|---|---|---|---|---|---|---|---|
+| exact-tags | +0 / -0 | 111.7 | 84.0 | 226.7 | 3.10x | 2.64x | 1.99x | 214.9 vs 207.5 µs (+3.6%) | 3446 vs 3562 (-3.2%, overlap) | identical to hash64-set (the original was not queried) |
+| hash64-index2 | +0 / -0 | 72.1 | 46.1 | 143.7 | 5.65x | 4.09x | 3.15x | 205.6 vs 206.3 µs (-0.3%) | 3601 vs 3537 (+1.8%, no overlap) | identical to hash64-set (the original was not queried) |
+| hash64-set | +0 / -0 | 106.0 | 79.5 | 211.6 | 3.28x | 2.78x | 2.14x | 207.0 vs 206.6 µs (+0.2%) | 3470 vs 3582 (-3.1%, overlap) | identical to hash64-set (the original was not queried) |
+2026-11-03T13:39:10Z done; results in /root/abm-lab/results/session-device
+2026-11-03T13:39:15Z cleanup: dns-server exited (left stopped), technitium-dns-watchdog.timer inactive

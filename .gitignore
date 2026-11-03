@@ -1,0 +1,26 @@
+lab/lists/
+lab/.work/
+lab/.run/
+__pycache__/
+.ruff_cache/
+lab/config/dnsApp.reload.config
+lab/config/reload-map.tsv
+
+# Lab output regenerates; only the records behind the tables are tracked.
+results/*
+!results/hash-risk/
+!results/session-*/
+!results/ci-*/
+!results/stall/
+!results/runtime-options-*/
+!results/correctness-*/
+!results/device-*/
+!results/decomposition-*/
+!results/small-limits-*/
+!results/unit-checks/
+!results/lookup-bench/
+lab/hash-risk/bin/
+lab/hash-risk/obj/
+lab/lookup-bench/bin/
+lab/lookup-bench/obj/
+lab/hash-risk/out/

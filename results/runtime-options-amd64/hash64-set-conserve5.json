@@ -1,0 +1,20 @@
+{
+  "variant": "patched",
+  "run_tag": "-roset5",
+  "image": "technitium/dns-server:15.6.2",
+  "memory_limit": "none",
+  "memory_swap": "none",
+  "grace_s": 20,
+  "app_sha256": "461bcd0b79bf5f3c115a5dd5347ac53675f8bc017427ed3bcb2a43cf1d93aa00",
+  "lists_expected": 23,
+  "lists_parsed": 23,
+  "peak_bytes": 107945984,
+  "peak_at_ms": 20978,
+  "cgroup_memory_peak_bytes": 109985792,
+  "steady_median_bytes": 107872256,
+  "final_bytes": 107835392,
+  "anon_bytes": 89477120,
+  "file_bytes": 14184448,
+  "all_lists_parsed_at_ms": 2071,
+  "window_ms": 22071
+}

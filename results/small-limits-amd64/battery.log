@@ -1,0 +1,34 @@
+original MEM=384m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+original MEM=320m start: names of the biggest list blocked 43 of 150, OutOfMemoryException lines in the app log 1
+original MEM=256m start: names of the biggest list blocked 43 of 150, OutOfMemoryException lines in the app log 1
+original MEM=384m reload: did not complete (reload did not complete: 45 of 46 reads)
+original MEM=320m reload: did not complete (reload did not complete: 23 of 46 reads)
+hash64-set MEM=192m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-set MEM=160m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-set MEM=128m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+run-lab failed at 112m
+hash64-set MEM=112m start: names of the biggest list blocked 43 of 150, OutOfMemoryException lines in the app log 1
+run-lab failed at 96m
+hash64-set MEM=96m start: names of the biggest list blocked 43 of 150, OutOfMemoryException lines in the app log 1
+hash64-set MEM=256m reload: completed, cgroup peak 217.3 MiB
+hash64-set MEM=192m reload: completed, cgroup peak 192.0 MiB
+hash64-set MEM=160m reload: did not complete (reload did not complete: 45 of 46 reads)
+hash64-index2 MEM=128m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=96m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=80m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=72m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+run-lab failed at 64m
+hash64-index2 MEM=64m start: names of the biggest list blocked 0 of 150, OutOfMemoryException lines in the app log 0
+hash64-index2 MEM=192m reload: completed, cgroup peak 150.8 MiB
+hash64-index2 MEM=160m reload: completed, cgroup peak 146.2 MiB
+hash64-index2 MEM=128m reload: completed, cgroup peak 128.0 MiB
+exact-tags MEM=192m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=160m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=128m start: names of the biggest list blocked 150 of 150, OutOfMemoryException lines in the app log 0
+run-lab failed at 112m
+exact-tags MEM=112m start: names of the biggest list blocked 0 of 150, OutOfMemoryException lines in the app log 0
+run-lab failed at 96m
+exact-tags MEM=96m start: names of the biggest list blocked 0 of 150, OutOfMemoryException lines in the app log 0
+exact-tags MEM=256m reload: completed, cgroup peak 229.1 MiB
+exact-tags MEM=192m reload: completed, cgroup peak 192.0 MiB
+exact-tags MEM=160m reload: did not complete (the container exited before the window ended (state in results/reload-patched-sl160m.state.txt))

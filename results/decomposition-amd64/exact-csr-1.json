@@ -1,0 +1,20 @@
+{
+  "variant": "patched",
+  "run_tag": "-dexact-csr1",
+  "image": "technitium/dns-server:15.6.2",
+  "memory_limit": "none",
+  "memory_swap": "none",
+  "grace_s": 20,
+  "app_sha256": "53b41e558309f0d4282b75c5e8c3025336f76207ab165856667bc00e5a754c01",
+  "lists_expected": 23,
+  "lists_parsed": 23,
+  "peak_bytes": 143966208,
+  "peak_at_ms": 20278,
+  "cgroup_memory_peak_bytes": 145530880,
+  "steady_median_bytes": 143728640,
+  "final_bytes": 143626240,
+  "anon_bytes": 125202432,
+  "file_bytes": 14155776,
+  "all_lists_parsed_at_ms": 1018,
+  "window_ms": 21035
+}

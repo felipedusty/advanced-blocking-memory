@@ -1,0 +1,244 @@
+diff --git a/Apps/AdvancedBlockingApp/App.cs b/Apps/AdvancedBlockingApp/App.cs
+index 97e13a4..858f828 100644
+--- a/Apps/AdvancedBlockingApp/App.cs
++++ b/Apps/AdvancedBlockingApp/App.cs
+@@ -24,6 +24,7 @@ using System.IO;
+ using System.Net;
+ using System.Net.Http;
+ using System.Net.Sockets;
++using System.Runtime.InteropServices;
+ using System.Security.Cryptography;
+ using System.Text;
+ using System.Text.Json;
+@@ -168,6 +169,79 @@ namespace AdvancedBlocking
+             return false;
+         }
+ 
++        //the list sets keep a 64 bit FNV-1a hash of each domain instead of the string, in a sorted array: 8 bytes per domain
++        //against about 80 for the string and its set entry. A listed hash equal to the hash of another name reports that name as
++        //listed: entries/2^64 per label looked up, summed over the lists consulted, about 1.4e-13 with 2.5 million entries (about
++        //4e-13 per query of three labels). The basis is random per process, so the names that collide change at every start and
++        //cannot be precomputed.
++        readonly static ulong _domainHashBasis = BitConverter.ToUInt64(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8)) | 1UL;
++
++        private static ulong GetDomainHash(string domain)
++        {
++            ulong hash = _domainHashBasis;
++
++            unchecked
++            {
++                foreach (char c in domain)
++                    hash = (hash ^ c) * 1099511628211UL;
++            }
++
++            return hash;
++        }
++
++        //the sorted hashes of a list and the position of the first hash of each value of the top bits: the hashes are spread evenly,
++        //so a lookup searches about 8 of them instead of the whole list
++        sealed class HashIndex
++        {
++            readonly List<ulong> _hashes;
++            readonly uint[] _starts;
++            readonly int _shift;
++
++            public HashIndex(List<ulong> hashes)
++            {
++                Span<ulong> sorted = CollectionsMarshal.AsSpan(hashes);
++                sorted.Sort();
++
++                int bits = Math.Max(1, 32 - System.Numerics.BitOperations.LeadingZeroCount((uint)(sorted.Length / 8)));
++
++                _hashes = hashes;
++                _starts = new uint[(1 << bits) + 1];
++                _shift = 64 - bits;
++
++                foreach (ulong hash in sorted)
++                    _starts[(int)(hash >> _shift) + 1]++;
++
++                for (int i = 1; i < _starts.Length; i++)
++                    _starts[i] += _starts[i - 1];
++            }
++
++            public bool Contains(ulong hash)
++            {
++                int bucket = (int)(hash >> _shift);
++                int start = (int)_starts[bucket];
++
++                return CollectionsMarshal.AsSpan(_hashes).Slice(start, (int)_starts[bucket + 1] - start).BinarySearch(hash) >= 0;
++            }
++        }
++
++        private static bool IsZoneFound(HashIndex domains, string domain, out string? foundZone)
++        {
++            do
++            {
++                if (domains.Contains(GetDomainHash(domain)))
++                {
++                    foundZone = domain;
++                    return true;
++                }
++
++                domain = GetParentZone(domain)!;
++            }
++            while (domain is not null);
++
++            foundZone = null;
++            return false;
++        }
++
+         private static bool IsZoneFound(Dictionary<Uri, BlockList> listZones, string domain, out string? foundZone, out Uri? listUri)
+         {
+             foreach (KeyValuePair<Uri, BlockList> listZone in listZones)
+@@ -1257,6 +1331,14 @@ namespace AdvancedBlocking
+ 
+             #region protected
+ 
++            //a domain takes 16 to 25 bytes in a list file, so the file size over 16 is about the number of domains: the list is allocated
++            //once (and grows only for a list of shorter lines), where a list grown by doubling holds its abandoned buffers in the heap
++            //while the lists load
++            protected int GetCapacity()
++            {
++                return (int)(new FileInfo(_listFilePath).Length / 16);
++            }
++
+             protected abstract void LoadListZone();
+ 
+             #endregion
+@@ -1334,7 +1416,7 @@ namespace AdvancedBlocking
+ 
+             readonly static char[] _popWordSeperator = new char[] { ' ', '\t' };
+ 
+-            HashSet<string> _listZone = [];
++            HashIndex _listZone = new HashIndex([]);
+ 
+             #endregion
+ 
+@@ -1372,13 +1454,14 @@ namespace AdvancedBlocking
+                 return word;
+             }
+ 
+-            private Queue<string> ReadListFile()
++            private List<ulong> ReadListFile()
+             {
+-                Queue<string> domains = new Queue<string>();
++                List<ulong> domains = new List<ulong>();
+ 
+                 try
+                 {
+                     _dnsServer.WriteLog("Advanced Blocking app is reading " + (_isAllowList ? "allow" : "block") + " list from: " + _listUrl.AbsoluteUri);
++                    domains.Capacity = GetCapacity();
+ 
+                     using (FileStream fS = new FileStream(_listFilePath, FileMode.Open, FileAccess.Read))
+                     {
+@@ -1452,7 +1535,7 @@ namespace AdvancedBlocking
+                             if (IPAddress.TryParse(hostname, out _))
+                                 continue; //skip line when hostname is IP address
+ 
+-                            domains.Enqueue(hostname);
++                            domains.Add(GetDomainHash(hostname));
+                         }
+                     }
+ 
+@@ -1472,13 +1555,7 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                Queue<string> listQueue = ReadListFile();
+-                HashSet<string> listZone = new HashSet<string>(listQueue.Count);
+-
+-                while (listQueue.Count > 0)
+-                    listZone.Add(listQueue.Dequeue());
+-
+-                _listZone = listZone;
++                _listZone = new HashIndex(ReadListFile());
+             }
+ 
+             #endregion
+@@ -1594,8 +1671,8 @@ namespace AdvancedBlocking
+         {
+             #region variables
+ 
+-            HashSet<string> _allowedListZone = [];
+-            HashSet<string> _blockedListZone = [];
++            HashIndex _allowedListZone = new HashIndex([]);
++            HashIndex _blockedListZone = new HashIndex([]);
+ 
+             #endregion
+ 
+@@ -1609,14 +1686,15 @@ namespace AdvancedBlocking
+ 
+             #region private
+ 
+-            private void ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains)
++            private void ReadAdblockListFile(out List<ulong> allowedDomains, out List<ulong> blockedDomains)
+             {
+-                allowedDomains = new Queue<string>();
+-                blockedDomains = new Queue<string>();
++                allowedDomains = new List<ulong>();
++                blockedDomains = new List<ulong>();
+ 
+                 try
+                 {
+                     _dnsServer.WriteLog("Advanced Blocking app is reading adblock list from: " + _listUrl.AbsoluteUri);
++                    blockedDomains.Capacity = GetCapacity();
+ 
+                     using (FileStream fS = new FileStream(_listFilePath, FileMode.Open, FileAccess.Read))
+                     {
+@@ -1648,14 +1726,14 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(GetDomainHash(domain));
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(2);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        blockedDomains.Enqueue(domain);
++                                        blockedDomains.Add(GetDomainHash(domain));
+                                 }
+                             }
+                             else if (line.StartsWith("@@||", StringComparison.Ordinal))
+@@ -1667,14 +1745,14 @@ namespace AdvancedBlocking
+                                     string options = line.Substring(i + 1);
+ 
+                                     if (((options.Length == 0) || (options.StartsWith('$') && (options.Contains("doc") || options.Contains("all")))) && DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(GetDomainHash(domain));
+                                 }
+                                 else
+                                 {
+                                     string domain = line.Substring(4);
+ 
+                                     if (DnsClient.IsDomainNameValid(domain))
+-                                        allowedDomains.Enqueue(domain);
++                                        allowedDomains.Add(GetDomainHash(domain));
+                                 }
+                             }
+                         }
+@@ -1694,19 +1772,10 @@ namespace AdvancedBlocking
+ 
+             protected override void LoadListZone()
+             {
+-                ReadAdblockListFile(out Queue<string> allowedDomains, out Queue<string> blockedDomains);
++                ReadAdblockListFile(out List<ulong> allowedDomains, out List<ulong> blockedDomains);
+ 
+-                HashSet<string> allowedListZone = new HashSet<string>(allowedDomains.Count);
+-                HashSet<string> blockedListZone = new HashSet<string>(blockedDomains.Count);
+-
+-                while (allowedDomains.Count > 0)
+-                    allowedListZone.Add(allowedDomains.Dequeue());
+-
+-                while (blockedDomains.Count > 0)
+-                    blockedListZone.Add(blockedDomains.Dequeue());
+-
+-                _allowedListZone = allowedListZone;
+-                _blockedListZone = blockedListZone;
++                _allowedListZone = new HashIndex(allowedDomains);
++                _blockedListZone = new HashIndex(blockedDomains);
+             }
+ 
+             #endregion

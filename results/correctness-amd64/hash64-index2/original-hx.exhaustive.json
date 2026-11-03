@@ -1,0 +1,84 @@
+{
+  "variant": "original",
+  "run_tag": "-hx",
+  "limit": 0,
+  "domains": 601786,
+  "answers": 601786,
+  "blocked": 601786,
+  "unblocked": 0,
+  "unblocked_answers": [],
+  "errors": 0,
+  "retried": 0,
+  "retried_domains": [],
+  "failures": [],
+  "digest": "5c7dd8b2a0940e60",
+  "txt_mode": "full",
+  "txt_answers": 601786,
+  "txt_blocked": 601786,
+  "txt_unblocked": 0,
+  "txt_unblocked_answers": [],
+  "txt_errors": 0,
+  "txt_retried": 0,
+  "txt_retried_domains": [],
+  "txt_failures": [],
+  "txt_digest": "ee373fac9d6210df",
+  "workers": 8,
+  "elapsed_s": 47.485,
+  "txt_elapsed_s": 49.911,
+  "allow_covered": 175,
+  "allow_answers": 175,
+  "allow_reported": 0,
+  "allow_errors": 0,
+  "allow_retried": 0,
+  "allow_digest": "191737ebd76058b9",
+  "allow_rcodes": {
+    "2": 175
+  },
+  "allow_elapsed_s": 44.273,
+  "list_counts": [
+    [
+      0,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/spam-tlds-adblock-allow.txt"
+    ],
+    [
+      1044,
+      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/spam-tlds-allow-onlydomains.txt"
+    ],
+    [
+      1733,
+      "https://lab.test/hosts/dyndns.txt"
+    ],
+    [
+      19897,
+      "https://lab.test/hosts/fake.txt"
+    ],
+    [
+      859,
+      "https://lab.test/hosts/native.tiktok.extended.txt"
+    ],
+    [
+      102978,
+      "https://lab.test/hosts/nsfw.txt"
+    ],
+    [
+      60833,
+      "https://lab.test/hosts/popupads.txt"
+    ],
+    [
+      252813,
+      "https://lab.test/hosts/pro.plus.txt"
+    ],
+    [
+      237422,
+      "https://lab.test/hosts/pro.txt"
+    ],
+    [
+      337500,
+      "https://lab.test/hosts/tif.txt"
+    ]
+  ],
+  "app_sha256": "1558d3d917b7ddb4cf265bc21a206eb4cd6cb887075374a59a1dbeb3c9b895cd",
+  "image": "technitium/dns-server:15.6.2",
+  "memory_limit": "none",
+  "memory_swap": "none"
+}

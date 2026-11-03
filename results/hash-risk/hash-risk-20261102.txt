@@ -1,0 +1,118 @@
+# bench/hash-risk run, 2026-11-02, amd64 (Docker in WSL2), .NET 10 workstation GC, 6 worker threads
+# 21 block lists fetched 2026-11-01 (2,098,411 unique entries). The hash under test is the one in the patch:
+# 64-bit FNV-1a over the UTF-16 code units, prime 0x100000001b3, random basis. "top k bits" and "low k bits" truncate the
+# 64-bit value so that collisions become frequent enough to compare against the ideal model (C(n,2)/2^k pairs).
+
+################ collide (pair collisions among the real entries)
+entries: 2,098,411; expected colliding pairs per base at width k = C(n,2)/2^k
+
+fnv1a (the patch): 100 random bases
+  top 32 bits   obs     51,523  exp     51,261.5  ratio  1.005  z   1.16
+  top 36 bits   obs      3,141  exp      3,203.8  ratio  0.980  z  -1.11
+  top 40 bits   obs        207  exp        200.2  ratio  1.034  z   0.48
+  top 44 bits   obs         15  exp         12.5  ratio  1.199  z   0.70
+  top 48 bits   obs          1  exp          0.8  ratio  1.278  z   0.25
+  low 32 bits   obs     51,211  exp     51,261.5  ratio  0.999  z  -0.22
+  low 40 bits   obs        174  exp        200.2  ratio  0.869  z  -1.85
+  all 64 bits   colliding pairs over 12 bases: 0 (expected 1.43E-006)
+
+fnv1a + xorshift per step (a candidate improvement, rejected): 100 random bases
+  top 32 bits   obs     51,927  exp     51,261.5  ratio  1.013  z   2.94
+  top 36 bits   obs      3,752  exp      3,203.8  ratio  1.171  z   9.68
+  top 40 bits   obs        669  exp        200.2  ratio  3.341  z  33.13
+  top 44 bits   obs        249  exp         12.5  ratio 19.896  z  66.85
+  top 48 bits   obs          0  exp          0.8  ratio  0.000  z  -0.88
+  low 32 bits   obs     51,637  exp     51,261.5  ratio  1.007  z   1.66
+  low 40 bits   obs        204  exp        200.2  ratio  1.019  z   0.27
+  all 64 bits   colliding pairs over 12 bases: 0 (expected 1.43E-006)
+
+sha256 truncated (ideal control): 12 random bases
+  top 32 bits   obs      6,214  exp      6,151.4  ratio  1.010  z   0.80
+  top 36 bits   obs        392  exp        384.5  ratio  1.020  z   0.38
+  top 40 bits   obs         21  exp         24.0  ratio  0.874  z  -0.62
+  top 44 bits   obs          2  exp          1.5  ratio  1.332  z   0.41
+  top 48 bits   obs          0  exp          0.1  ratio  0.000  z  -0.31
+  low 32 bits   obs      6,217  exp      6,151.4  ratio  1.011  z   0.84
+  low 40 bits   obs         21  exp         24.0  ratio  0.874  z  -0.62
+  all 64 bits   colliding pairs over 12 bases: 0 (expected 1.43E-006)
+
+################ persist (do collisions survive a new basis?)
+top-32-bit colliding pairs with basis A: 557, with basis B: 526, pairs that collide under both: 0
+expected overlap if the bases are independent: 1.33E-007
+
+################ probe (false positives of unlisted names against the real entries, reduced widths, 3 random bases)
+random names 8-20 letters + tld: 59,999,997 unlisted probes over 3 bases
+  top 32 bits   obs     29,186  exp     29,307.3  ratio  0.996  z  -0.71
+  top 36 bits   obs      1,830  exp      1,832.1  ratio  0.999  z  -0.05
+  top 40 bits   obs        122  exp        114.5  ratio  1.065  z   0.70
+  top 44 bits   obs          7  exp          7.2  ratio  0.978  z  -0.06
+  low 32 bits   obs     29,156  exp     29,307.3  ratio  0.995  z  -0.88
+  low 40 bits   obs        116  exp        114.5  ratio  1.013  z   0.14
+
+neighbours of every entry (x+e, e+x, e[1..], e[..^1], swap, upper, tld): 43,948,392 unlisted probes over 3 bases
+  top 32 bits   obs     21,418  exp     21,466.8  ratio  0.998  z  -0.33
+  top 36 bits   obs      1,365  exp      1,342.0  ratio  1.017  z   0.63
+  top 40 bits   obs         77  exp         83.9  ratio  0.918  z  -0.75
+  top 44 bits   obs          2  exp          5.2  ratio  0.382  z  -1.42
+  low 32 bits   obs     21,354  exp     21,466.8  ratio  0.995  z  -0.77
+  low 40 bits   obs         84  exp         83.9  ratio  1.001  z   0.01
+
+counters: host{i}.example.com and a{i}.net: 24,000,000 unlisted probes over 3 bases
+  top 32 bits   obs     11,888  exp     11,722.9  ratio  1.014  z   1.52
+  top 36 bits   obs        772  exp        732.9  ratio  1.053  z   1.45
+  top 40 bits   obs         38  exp         45.8  ratio  0.830  z  -1.15
+  top 44 bits   obs          4  exp          2.9  ratio  1.397  z   0.67
+  low 32 bits   obs     11,741  exp     11,722.9  ratio  1.002  z   0.17
+  low 40 bits   obs         29  exp         45.8  ratio  0.633  z  -2.48
+
+every label up to 4 chars over [a-z0-9-] + .com: 5,771,799 unlisted probes over 3 bases
+  top 32 bits   obs      2,855  exp      2,819.3  ratio  1.013  z   0.67
+  top 36 bits   obs        179  exp        176.2  ratio  1.016  z   0.21
+  top 40 bits   obs          5  exp         11.0  ratio  0.454  z  -1.81
+  top 44 bits   obs          1  exp          0.7  ratio  1.453  z   0.38
+  low 32 bits   obs      2,790  exp      2,819.3  ratio  0.990  z  -0.55
+  low 40 bits   obs         17  exp         11.0  ratio  1.543  z   1.80
+
+################ dense (every string of 1 to 5 characters over 38 characters, 2 bases)
+every string of 1 to 5 characters over 38 characters: 81,376,658 strings; expected colliding pairs per base at width k = C(n,2)/2^k
+  top 40 bits   obs        300  exp      6,022.8  ratio  0.050  z -73.74
+  top 44 bits   obs          0  exp        376.4  ratio  0.000  z -19.40
+  top 48 bits   obs          0  exp         23.5  ratio  0.000  z  -4.85
+  top 52 bits   obs          0  exp          1.5  ratio  0.000  z  -1.21
+  top 56 bits   obs          0  exp          0.1  ratio  0.000  z  -0.30
+  top 64 bits   obs          0  exp          0.0  ratio  0.000  z  -0.02
+
+################ longsub (every one- and two-position substitution in a 250-character name, 2 bases)
+one- and two-position substitutions in a 250-character name: 40,347,000 distinct strings; expected colliding pairs per base at width k = C(n,2)/2^k
+  top 40 bits   obs      1,507  exp      1,480.5  ratio  1.018  z   0.69
+  top 44 bits   obs         98  exp         92.5  ratio  1.059  z   0.57
+  top 48 bits   obs          7  exp          5.8  ratio  1.210  z   0.51
+  top 52 bits   obs          0  exp          0.4  ratio  0.000  z  -0.60
+  top 56 bits   obs          0  exp          0.0  ratio  0.000  z  -0.15
+  top 64 bits   obs          0  exp          0.0  ratio  0.000  z  -0.01
+
+################ shape (worst-case query shapes, 21 per-list sets, the app's scan order)
+  typical: 3 labels, not listed                HashSet<string>       2640 ns   HashSet<ulong>       3151 ns   ratio  1.19
+  4 labels of 63 characters                    HashSet<string>       8117 ns   HashSet<ulong>      18701 ns   ratio  2.30
+  127 one-character labels (253 characters)    HashSet<string>     310764 ns   HashSet<ulong>     563581 ns   ratio  1.81
+  deep subdomain of a listed name              HashSet<string>        464 ns   HashSet<ulong>        726 ns   ratio  1.57
+
+################ width (21 per-list sets built with exact capacity; heap includes about 18 MiB of constant overhead of this harness)
+string  21 per-list sets  heap   203.4 MiB  miss    4065 ns  hit    2040 ns
+u64     21 per-list sets  heap    66.5 MiB  miss    4295 ns  hit    1963 ns
+u128    21 per-list sets  heap    86.7 MiB  miss    5468 ns  hit    2374 ns   (second hash is FNV with an xorshift step, not a validated 128-bit hash)
+
+################ scale (one big set of synthetic names, one process each)
+HashSet<string>  N   15,000,000 (unique 14,999,996)  heap   1276.4 MiB    89.2 B/entry  build  15.2 s  miss    986 ns  hit    882 ns
+HashSet<ulong>   N   15,000,000 (unique 14,999,996)  heap    286.1 MiB    20.0 B/entry  build   8.4 s  miss   1029 ns  hit    571 ns
+HashSet<ulong>   N   50,000,000 (unique 49,999,946)  heap    953.7 MiB    20.0 B/entry  build  31.1 s  miss   1276 ns  hit    633 ns
+
+################ probability table (computed, not measured): expected number of distinct queried names falsely reported as listed = D * L * N / 2^64
+# D = distinct names queried during one process lifetime, N = entries in all sets, L = label levels checked = 3
+                                   2.46 M (this lab)    15 M (user in #1604)                   100 M                     1 B
+1e5 (a home, a month)                       4.00e-08                2.44e-07                1.63e-06                1.63e-05
+1e7 (a large office, a year)                4.00e-06                2.44e-05                1.63e-04                1.63e-03
+1e9 (an ISP)                                4.00e-04                2.44e-03                1.63e-02                1.63e-01
+1e11 (the whole internet)                   4.00e-02                2.44e-01                1.63e+00                1.63e+01
+# per single query (L=3): N=2.46M -> 4.00e-13   N=15M -> 2.44e-12   N=100M -> 1.63e-11
+# chance that any of the top-1M names collides with any of N entries (D=1e6): 2.46M: 4.0e-07  15M: 2.4e-06  100M: 1.6e-05  1B: 1.6e-04
