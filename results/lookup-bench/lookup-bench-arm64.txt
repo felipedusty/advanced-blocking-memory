@@ -1,0 +1,16 @@
+1814363 names, 4 cpus, Arm64 .NET 10.0.14
+index, 1 hashes per start          hit    63.5 ns   miss    53.8 ns   (found 1000000 of 1000000 / 12 of 1000000)    12.6 B/entry
+index, 2 hashes per start          hit    51.8 ns   miss    51.8 ns   (found 1000000 of 1000000 / 12 of 1000000)    10.3 B/entry
+index, 4 hashes per start          hit    44.8 ns   miss    48.9 ns   (found 1000000 of 1000000 / 12 of 1000000)     9.2 B/entry
+index, 8 hashes per start          hit    52.1 ns   miss    59.3 ns   (found 1000000 of 1000000 / 12 of 1000000)     8.6 B/entry
+index, 16 hashes per start         hit    48.2 ns   miss    50.6 ns   (found 1000000 of 1000000 / 12 of 1000000)     8.3 B/entry
+index, 32 hashes per start         hit    55.9 ns   miss    57.2 ns   (found 1000000 of 1000000 / 12 of 1000000)     8.1 B/entry
+index, 64 hashes per start         hit    65.1 ns   miss    73.8 ns   (found 1000000 of 1000000 / 12 of 1000000)     8.1 B/entry
+warm-up                            hit     4.2 ns   miss     0.9 ns   (found 10000 of 1000000 / 0 of 1000000)     0.0 B/entry
+HashSet<string>                    hit   412.3 ns   miss   162.2 ns   (found 1000000 of 1000000 / 12 of 1000000)    80.0 B/entry
+HashSet<ulong>                     hit   148.4 ns   miss   127.3 ns   (found 1000000 of 1000000 / 12 of 1000000)    20.0 B/entry
+sorted ulong[] binary search       hit   276.8 ns   miss   276.5 ns   (found 1000000 of 1000000 / 12 of 1000000)     8.0 B/entry
+sorted + prefix index              hit    71.0 ns   miss    88.5 ns   (found 1000000 of 1000000 / 12 of 1000000)     9.2 B/entry
+sorted + interpolation             hit   182.5 ns   miss   192.3 ns   (found 1000000 of 1000000 / 12 of 1000000)     8.0 B/entry
+open addressing ulong[] (load .5)  hit    38.5 ns   miss    39.5 ns   (found 1000000 of 1000000 / 12 of 1000000)    18.5 B/entry
+hash of a name: FNV-1a 20.9 ns, string.GetHashCode 19.8 ns (sinks 2699889260433358917)
